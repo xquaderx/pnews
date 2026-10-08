@@ -142,7 +142,7 @@ export function buildNewsCaption(input: {
   mode?: PostMode;
   quote?: string | null;
 }): string {
-  const title = sanitizePostText(input.title);
+  const title = cleanHeadline(sanitizePostText(input.title));
   const mode = input.mode ?? "normal";
   // Competitor style: bold title only (❗️ only for truly important).
   const prefix = mode === "important" ? "❗️ " : "";
