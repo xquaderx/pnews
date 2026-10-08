@@ -43,40 +43,104 @@ export function decodeEntities(text: string): string {
   return cur;
 }
 
-/** Remove outlet self-promo from titles/bodies (Fox, CNN, Reuters exclusives, etc.). */
-export function stripOutletBranding(text: string): string {
+const OUTLET =
+  "fox(?:\\s*news)?|cnn|msnbc|nbc|abc|cbs(?:\\s*news)?|bbc|reuters|ap|bloomberg|politico|the\\s+hill|getty(?:\\s*images)?|associated\\s+press";
+
+/** Remove photo credits / CMS bylines accidentally scraped into the article body. */
+export function stripImageCredits(text: string): string {
   return text
     .replace(
-      /^\s*(first\s+on\s+(fox(?:\s*news)?|cnn|msnbc|nbc|abc|cbs|reuters|ap|bloomberg|politico|the\s+hill)\s*[:\-–—]\s*)/i,
+      /источник\s+изображени[яй]\s*:\s*[^.?!]*(?:Published|Updated|Getty|AP Photo|Reuters)[^.?!]*[.?!]?/gi,
+      " ",
+    )
+    .replace(
+      /(?:image\s+source|photo(?:\s*credit)?|credit)\s*:\s*[^.?!]*(?:Published|Updated|Getty|AP Photo|Reuters|By\s+[A-Z])[^.?!]*[.?!]?/gi,
+      " ",
+    )
+    .replace(
+      /\b(?:Getty\s*Images|AP\s*Photo|AFP|Reuters(?:\s*photo)?)\b(?:\s*\/\s*[^.?!,;]*)?/gi,
+      " ",
+    )
+    .replace(
+      /\bBy\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}(?:\s+and\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})?\b/g,
+      " ",
+    )
+    .replace(
+      /\bPublished\s+\d{1,2}\s+[A-Za-z]+\s+\d{4}(?:,\s*\d{1,2}:\d{2}\s*(?:BST|GMT|UTC|ET|PT))?/gi,
+      " ",
+    )
+    .replace(/\bUpdated\s+\d+\s+minutes?\s+ago\b/gi, " ")
+    .replace(/\bUpdated\s+\d{1,2}\s+[A-Za-z]+\s+\d{4}\b/gi, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/** Remove outlet self-promo / attribution crumbs from titles and bodies. */
+export function stripOutletBranding(text: string): string {
+  const outlet = OUTLET;
+  return stripImageCredits(text)
+    .replace(
+      new RegExp(
+        `^\\s*(first\\s+on\\s+(?:${outlet})\\s*[:\\-–—]\\s*)`,
+        "i",
+      ),
       "",
     )
     .replace(
-      /^\s*((?:в\s*)?первые\s+на\s+(?:канале\s+)?(?:fox(?:\s*news)?|cnn|msnbc|nbc|abc|cbs|reuters|bloomberg|politico)\s*[:\-–—]\s*)/i,
+      new RegExp(
+        `^\\s*((?:в\\s*)?первые\\s+на\\s+(?:канале\\s+)?(?:${outlet})\\s*[:\\-–—]\\s*)`,
+        "i",
+      ),
       "",
     )
     .replace(
-      /\b(first\s+on\s+(fox(?:\s*news)?|cnn|msnbc|nbc|abc|cbs|reuters|ap|bloomberg|politico|the\s+hill)\s*[:\-–—]\s*)/gi,
+      new RegExp(
+        `\\b(first\\s+on\\s+(?:${outlet})\\s*[:\\-–—]\\s*)`,
+        "gi",
+      ),
       "",
     )
     .replace(
-      /((?:в\s*)?первые\s+на\s+(?:канале\s+)?(?:fox(?:\s*news)?|cnn|msnbc|nbc|abc|cbs|reuters|bloomberg|politico)\s*[:\-–—]\s*)/gi,
+      new RegExp(
+        `((?:в\\s*)?первые\\s+на\\s+(?:канале\\s+)?(?:${outlet})\\s*[:\\-–—]\\s*)`,
+        "gi",
+      ),
       "",
     )
     .replace(
-      /\b(exclusive(?:ly)?\s+(?:to|from)\s+(fox(?:\s*news)?|cnn|reuters|ap|bloomberg)\b[:\-–—]?\s*)/gi,
+      new RegExp(
+        `\\b(exclusive(?:ly)?\\s+(?:to|from)\\s+(?:${outlet})\\b[:\\-–—]?\\s*)`,
+        "gi",
+      ),
       "",
     )
     .replace(/\b(fox\s*news\s+exclusive\s*[:\-–—]\s*)/gi, "")
+    // "по словам … BBC, CBS News" / "according to BBC"
     .replace(
-      /\((fox(?:\s*news)?|cnn|msnbc|reuters|ap|bloomberg|politico|the\s+hill)\)\s*$/gi,
+      new RegExp(
+        `(?:,\\s*)?(?:по\\s+словам|согласно|как\\s+сообщает|как\\s+пишет)\\s+(?:американского\\s+партнера\\s+)?(?:${outlet})(?:\\s*,\\s*(?:${outlet}))*\\.?`,
+        "gi",
+      ),
       "",
     )
     .replace(
-      /\s*[-–—]\s*(fox(?:\s*news)?|cnn|msnbc|reuters|ap|bloomberg|politico|the\s+hill)\s*$/gi,
+      new RegExp(
+        `(?:,\\s*)?(?:according\\s+to|as\\s+reported\\s+by)\\s+(?:${outlet})(?:\\s*,\\s*(?:${outlet}))*\\.?`,
+        "gi",
+      ),
+      "",
+    )
+    .replace(
+      new RegExp(`\\((?:${outlet})\\)\\s*$`, "gi"),
+      "",
+    )
+    .replace(
+      new RegExp(`\\s*[-–—]\\s*(?:${outlet})\\s*$`, "gi"),
       "",
     )
     .replace(/\s{2,}/g, " ")
     .replace(/^\s*[:\-–—]\s*/, "")
+    .replace(/\s+([,.!?;:])/g, "$1")
     .trim();
 }
 
