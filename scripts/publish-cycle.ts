@@ -23,7 +23,7 @@ import {
   shortenSummary,
 } from "../lib/post-format.js";
 import { isSimilarTitle } from "../lib/posted.js";
-import { polishRussian } from "../lib/ru-polish.js";
+import { looksBrokenRussian, polishRussian } from "../lib/ru-polish.js";
 import {
   detectPostMode,
   extractQuote,
@@ -153,14 +153,25 @@ async function main(): Promise<void> {
 
     title = polishRussian(sanitizePostText(title));
     summary = polishRussian(sanitizePostText(summary));
-    // Explain US-specific terms for readers who don't follow the country.
+    // One short background clause max — no dictionary dumps.
     summary = withOutsiderContext(title, summary);
     summary = polishRussian(
       sanitizePostText(shortenSummary(summary, BODY_MAX_LEN, BODY_MAX_SENTENCES)),
     );
+    title = polishRussian(title);
 
     if (title.length < 12) continue;
     if (!looksRussian(title) || !looksRussian(summary)) continue;
+    if (looksBrokenRussian(title) || looksBrokenRussian(summary)) {
+      console.log(
+        JSON.stringify({
+          skipped: true,
+          reason: "broken_russian",
+          title,
+        }),
+      );
+      continue;
+    }
     if (!isExplainableBody(title, summary)) {
       console.log(
         JSON.stringify({

@@ -1,55 +1,51 @@
 /**
- * Extra background for readers who don't follow US news.
- * Primers are short and only added when the story needs them.
+ * Light background for readers new to US news.
+ * Prefer one short natural clause — never a dictionary dump.
  */
 
-type Primer = { re: RegExp; text: string };
+type Primer = { re: RegExp; clause: string };
 
-// Avoid JS \b with Cyrillic — it breaks Russian matching.
 const PRIMERS: Primer[] = [
   {
-    re: /(tropical storm|hurricane|ураган|тропический шторм|тропического шторма)/i,
-    text: "Тропический шторм / ураган — мощный циклон у берегов США: сильный ветер, ливни и риск наводнений на побережье Мексиканского залива и Атлантики.",
+    re: /(tropical storm|hurricane|ураган|тропический шторм)/i,
+    clause:
+      "Ураганы у берегов США несут сильный ветер, ливни и риск наводнений.",
   },
   {
-    re: /(Guantanamo|Гуантанамо|9\/11|11 сентября)/i,
-    text: "Гуантанамо — военная тюрьма США на Кубе. Там с начала 2000-х держат людей, которых власти США связывают с терактами 11 сентября 2001 года и войной с террором.",
-  },
-  {
-    re: /(special counsel|специальн\w+\s+прокурор|Letitia James|Летици\w+\s+Джеймс)/i,
-    text: "Специальный прокурор в США — независимый обвинитель по чувствительному делу. Летиция Джеймс — генпрокурор штата Нью-Йорк, известна делами против Трампа.",
-  },
-  {
-    re: /(midterm|промежуточн\w+\s+выбор|House of Representatives|Палат\w+\s+представител)/i,
-    text: "Промежуточные выборы в США — голосование в Конгресс в середине президентского срока; от них зависит, сможет ли партия президента проводить законы.",
+    re: /(Guantanamo|Гуантанамо|11 сентября)/i,
+    clause:
+      "Гуантанамо — военная тюрьма США на Кубе, где содержат обвиняемых по делам о терроризме.",
   },
   {
     re: /(FDA|мифепристон|mifepristone)/i,
-    text: "FDA — американский регулятор лекарств и продуктов. Мифепристон — препарат для медикаментозного прерывания беременности; споры о нём идут в судах и политике США.",
+    clause: "FDA — американский регулятор лекарств.",
   },
   {
     re: /(Starlink|SpaceX)/i,
-    text: "Starlink — спутниковый интернет компании SpaceX Илона Маска; запуск в новых странах часто упирается в разрешения властей и местных операторов связи.",
+    clause: "Starlink — спутниковый интернет компании SpaceX Илона Маска.",
   },
   {
-    re: /(governor|губернатор|gubernatorial)/i,
-    text: "Губернатор в США — глава штата (как президент, но на уровне штата): отвечает за бюджет, законы штата и чрезвычайные ситуации.",
+    re: /(Federal Reserve|ФРС|ипотек|инфляц|повышен\w+\s+ставк)/i,
+    clause:
+      "ФРС — центральный банк США; её решения по ставкам влияют на кредиты и цены.",
   },
   {
-    re: /(White House|Белый дом|\bTrump\b|Трамп)/i,
-    text: "Белый дом — резиденция и аппарат президента США. Сейчас президент — Дональд Трамп.",
+    re: /(Christa Pike|Криста Пайк|смертельн\w+\s+инъекц)/i,
+    clause:
+      "В части штатов США до сих пор есть смертная казнь через смертельную инъекцию.",
   },
   {
-    re: /(Senate|Сенат|senator|сенатор)/i,
-    text: "Сенат — верхняя палата Конгресса США: 100 сенаторов, по двое от каждого штата; без Сената не принимают федеральные законы.",
+    re: /(FBI|ФБР|Mall of America|ИГИЛ)/i,
+    clause:
+      "ФБР — федеральная полиция США; Mall of America — крупный торговый центр в Миннесоте.",
   },
   {
-    re: /(mortgage|ипотек|Federal Reserve|ФРС|inflation|инфляц)/i,
-    text: "Ипотечные ставки и инфляция в США сильно влияют на цены жилья и повседневные расходы; ключевую роль играет Федеральная резервная система (ФРС).",
+    re: /(midterm|промежуточн\w+\s+выбор)/i,
+    clause:
+      "Промежуточные выборы решают, кто контролирует Конгресс США в середине президентского срока.",
   },
 ];
 
-/** Titles that are weather products / maps, not explainable news. */
 export function isThinProductTitle(title: string): boolean {
   return (
     /(graphic|graphics|watches?\/warnings?|outlook|discussion|public advisory)/i.test(
@@ -60,43 +56,38 @@ export function isThinProductTitle(title: string): boolean {
   );
 }
 
-/** Reject body that still doesn't explain the story to a newcomer. */
 export function isExplainableBody(title: string, summary: string): boolean {
   if (isThinProductTitle(title)) return false;
   const s = summary.replace(/\s+/g, " ").trim();
   if (s.length < 160) return false;
   const sentences = (s.match(/[.!?…]/g) ?? []).length;
-  // Prefer 3+ sentences; allow 2 if the body is already long and concrete.
   if (sentences < 2) return false;
   if (sentences < 3 && s.length < 260) return false;
-  const hasWhoWhat =
-    /(это|который|которая|президент|губернатор|сенатор|судья|компани|власт|обвиня|ураган|шторм|суд|Конгресс|Белый дом|тюрм|штат|выбор|казн|ФБР|ФРС|Ставк)/i.test(
-      s,
-    ) ||
-    /\b(president|governor|senator|judge|company|charged|hurricane|storm|court|Congress|prison|state|executed|rate)\b/i.test(
-      s,
-    );
-  return hasWhoWhat;
+  return /(это|который|которая|президент|губернатор|сенатор|судья|компани|власт|обвиня|ураган|шторм|суд|Конгресс|Белый дом|тюрм|штат|выбор|казн|ФБР|ФРС|арест|задерж)/i.test(
+    s,
+  );
 }
 
 /**
- * Prepend 1–2 short primers if the story touches a US-specific concept
- * and the explainer isn't already in the text.
+ * Add at most one short background sentence, and only if the body
+ * does not already explain the concept.
  */
 export function withOutsiderContext(title: string, summary: string): string {
   const blob = `${title}\n${summary}`;
-  const extras: string[] = [];
+  // Already long enough and concrete — don't pad with textbook lines.
+  if (summary.length >= 320 && (summary.match(/[.!?…]/g) ?? []).length >= 3) {
+    return summary;
+  }
   for (const p of PRIMERS) {
     if (!p.re.test(blob)) continue;
-    // Skip if a distinctive chunk of the primer is already present.
-    const marker = p.text.split(/[—.]/)[0]?.trim().toLowerCase() ?? "";
-    if (marker.length >= 6 && summary.toLowerCase().includes(marker)) {
-      // Still add if primer has a definition the summary lacks (em dash explainer).
-      if (summary.includes("—") || summary.includes("–")) continue;
+    const marker = p.clause.slice(0, 18).toLowerCase();
+    if (summary.toLowerCase().includes(marker)) continue;
+    // Put primer after first sentence when possible — reads more naturally.
+    const m = summary.match(/^(.+?[.!?…])\s+([\s\S]+)$/);
+    if (m) {
+      return `${m[1]} ${p.clause} ${m[2]}`.replace(/\s+/g, " ").trim();
     }
-    extras.push(p.text);
-    if (extras.length >= 2) break;
+    return `${p.clause} ${summary}`.replace(/\s+/g, " ").trim();
   }
-  if (extras.length === 0) return summary;
-  return `${extras.join(" ")} ${summary}`.replace(/\s+/g, " ").trim();
+  return summary;
 }

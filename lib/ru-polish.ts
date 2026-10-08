@@ -1,36 +1,10 @@
 /**
- * Light post-MT cleanup: names, calques, broken machine-Russian.
- * Not a full translator — just stop the worst pass-throughs.
+ * Post-MT cleanup toward natural Russian: names, calques,
+ * duplicate sentences, leftover English scraps.
  */
-const PHRASE_FIXES: Array<[RegExp, string]> = [
-  [/\bНационал-демократы\b/gi, "Демократы"],
-  [/\bнационал-демократ(?:ы|ов|ам|ами|ах)?\b/gi, "демократы"],
-  [/\bСпар\b/g, "Spar"],
-  [/\bТурек\b/g, "Турек"],
-  [/\bХинсон\b/g, "Хинсон"],
-  [/\bWare Eye\b/gi, "настороженный взгляд"],
-  [/\bDrawing Ware Eye\b/gi, "вызывая настороженность"],
-  [/\bхриплого митинга\b/gi, "шумного митинга"],
-  [/\bглавный пост США\b/gi, "крупную базу США"],
-  [/\bвакцинн(?:ым|ых|ые)\s+травм/gi, "поствакцинальн$1 травм"],
-  [/\bпо вакцинным травмам\b/gi, "по поствакцинальным осложнениям"],
-  [/\bМинздрав США\b/g, "минздрав США"],
-  [/\bHHS\b/g, "минздрав США"],
-  [/\bFDA\b/g, "FDA"],
-  [/\bWhite House\b/g, "Белый дом"],
-  [/\bHouse of Representatives\b/gi, "Палата представителей"],
-  [/\bSupreme Court\b/gi, "Верховный суд"],
-  [/\bNational Democrats\b/gi, "Демократы"],
-  [/\bDGA\b/g, "Ассоциация губернаторов-демократов"],
-  [/\bmidterms?\b/gi, "промежуточные выборы"],
-  [/\bCamp David\b/gi, "Кэмп-Дэвид"],
-  [/\bGuantanamo\b/gi, "Гуантанамо"],
-  [/\bGuantánamo\b/gi, "Гуантанамо"],
-];
 
 const NAME_MAP: Array<[RegExp, string]> = [
   [/\bRFK Jr\.?/gi, "RFK-младший"],
-  [/\bRFK-младший\b/g, "RFK-младший"],
   [/\bDonald Trump\b/gi, "Дональд Трамп"],
   [/\bTrump\b/g, "Трамп"],
   [/\bJoe Biden\b/gi, "Джо Байден"],
@@ -44,20 +18,118 @@ const NAME_MAP: Array<[RegExp, string]> = [
   [/\bNewsom\b/g, "Ньюсом"],
   [/\bBarack Obama\b/gi, "Барак Обама"],
   [/\bObama\b/g, "Обама"],
-  [/\bZohran Mamdani\b/gi, "Зохран Мамдани"],
-  [/\bMamdani\b/g, "Мамдани"],
   [/\bChrista Pike\b/gi, "Криста Пайк"],
   [/\bKrista Pike\b/gi, "Криста Пайк"],
+  [/\bTwin Cities\b/gi, "Миннеаполиса и Сент-Пола"],
+  [/\bISIS\b/g, "ИГИЛ"],
+  [/\bISIL\b/g, "ИГИЛ"],
 ];
+
+const PHRASE_FIXES: Array<[RegExp, string]> = [
+  // Broken MT titles / verbs — before name rewrites.
+  [/мужчина посмотрел на .+? за нападение и поклялся в верности ИГИЛ(?:,?\s*сообщает ФБР)?/gi,
+    "ФБР: в Миннесоте задержали парня, который готовил нападение на Mall of America и присягнул ИГИЛ"],
+  [/посмотрел на (.+?) за нападение/gi, "готовил нападение на $1"],
+  [/смотрит на (.+?) за нападение/gi, "готовит нападение на $1"],
+  [/cased\s+(.+?)\s+for\s+(?:an\s+)?attack/gi, "готовил нападение на $1"],
+  [/eyed\s+(.+?)\s+for\s+(?:an\s+)?attack/gi, "готовил нападение на $1"],
+  [/targeted\s+(.+?)\s+for\s+(?:an\s+)?attack/gi, "готовил нападение на $1"],
+  [/арестован под дулом пистолета/gi, "задержан вооружёнными агентами"],
+  [/был арестован под дулом пистолета/gi, "был задержан вооружёнными агентами"],
+  [/торговом центре америка\b/gi, "торговом центре Mall of America"],
+  [/торгового центра америка\b/gi, "торгового центра Mall of America"],
+  [/в Атлантике сезон\b/gi, "в атлантическом сезоне"],
+  [/Атлантике сезон\b/gi, "атлантическом сезоне"],
+  [/побило исторический рекорд/gi, "стало рекордно поздним"],
+  [/сообщает ФБР\s*$/gi, ""],
+  [/Национал-демократы/gi, "Демократы"],
+  [/хриплого митинга/gi, "шумного митинга"],
+  [/главный пост США/gi, "крупную базу США"],
+  [/по вакцинным травмам/gi, "по поствакцинальным осложнениям"],
+  [/\bHHS\b/g, "минздрав США"],
+  [/\bWhite House\b/g, "Белый дом"],
+  [/\bHouse of Representatives\b/gi, "Палата представителей"],
+  [/\bSupreme Court\b/gi, "Верховный суд"],
+  [/\bCamp David\b/gi, "Кэмп-Дэвид"],
+  [/\bGuantanamo\b/gi, "Гуантанамо"],
+  [/\bmidterms?\b/gi, "промежуточные выборы"],
+  [/федеральному уголовному иску/gi, "федеральному обвинению"],
+  [/федеральной уголовной жалобе/gi, "федеральному обвинению"],
+  [/уголовному иску, поданному/gi, "обвинению, которое подали"],
+  [/во время организованной встречи, чтобы купить/gi, "на контрольной встрече, где он собирался купить"],
+  [/штурмовую винтовку/gi, "автомат"],
+];
+
+/** Split into sentences (RU/EN punctuation). */
+export function splitSentences(text: string): string[] {
+  return (text.match(/[^.!?…]+[.!?…]+|[^.!?…]+$/g) ?? [text])
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function normTokens(s: string): Set<string> {
+  const norm = s
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return new Set(norm.split(" ").filter((t) => t.length >= 4));
+}
+
+function similarSentence(a: string, b: string): boolean {
+  const ta = normTokens(a);
+  const tb = normTokens(b);
+  if (ta.size === 0 || tb.size === 0) return false;
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter += 1;
+  const union = ta.size + tb.size - inter;
+  const jaccard = inter / union;
+  const containment = inter / Math.min(ta.size, tb.size);
+  return jaccard >= 0.55 || containment >= 0.75;
+}
+
+/** Drop near-duplicate sentences (RSS+page often repeat the same lead). */
+export function dedupeSentences(text: string): string {
+  const parts = splitSentences(text);
+  const kept: string[] = [];
+  for (const s of parts) {
+    if (kept.some((k) => similarSentence(k, s))) continue;
+    kept.push(s);
+  }
+  return kept.join(" ").replace(/\s{2,}/g, " ").trim();
+}
+
+/** Heuristic: still looks like broken machine Russian. */
+export function looksBrokenRussian(text: string): boolean {
+  if (/посмотрел на .+ за /i.test(text)) return true;
+  if (/\bв Атлантике сезон\b/i.test(text)) return true;
+  if (/торговом центре америка/i.test(text)) return true;
+  if (/под дулом пистолета/i.test(text)) return true;
+  // Too much leftover English in a "Russian" post.
+  const cyr = (text.match(/[А-Яа-яЁё]/g) ?? []).length;
+  const lat = (text.match(/[A-Za-z]/g) ?? []).length;
+  if (cyr > 40 && lat > cyr * 0.35) return true;
+  // Dictionary-dump primers stacked
+  if ((text.match(/—/g) ?? []).length >= 3) return true;
+  return false;
+}
 
 export function polishRussian(text: string): string {
   let out = text;
-  for (const [re, to] of NAME_MAP) out = out.replace(re, to);
+  // Phrase fixes first — they catch broken MT before name rewrites.
   for (const [re, to] of PHRASE_FIXES) out = out.replace(re, to);
+  for (const [re, to] of NAME_MAP) out = out.replace(re, to);
+  out = dedupeSentences(out);
   out = out
     .replace(/\s{2,}/g, " ")
     .replace(/\s+([,.!?;:])/g, "$1")
-    .replace(/([.!?])\s*([а-яё])/g, (_, p, c) => `${p} ${c.toUpperCase()}`)
+    // Capitalize after sentence end.
+    .replace(/([.!?…])\s*([а-яё])/g, (_, p, c: string) => `${p} ${c.toUpperCase()}`)
+    .replace(/^(и|а|но)\s+/i, "")
     .trim();
+  // Ensure first letter capital.
+  if (out && /[а-яёa-z]/.test(out[0]!)) {
+    out = out[0]!.toUpperCase() + out.slice(1);
+  }
   return out;
 }
