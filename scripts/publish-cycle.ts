@@ -11,6 +11,13 @@ import { findDuplicate, rememberPosted } from "../lib/dedupe.js";
 import { createFileKv } from "../lib/file-kv.js";
 import { resolveNewsImage } from "../lib/image.js";
 import {
+  isExplainableBody,
+  isThinProductTitle,
+  withOutsiderContext,
+} from "../lib/explain.js";
+import {
+  BODY_MAX_LEN,
+  BODY_MAX_SENTENCES,
   buildBrasilCrossPromo,
   buildNewsCaption,
   shortenSummary,
@@ -91,6 +98,7 @@ async function main(): Promise<void> {
   const candidates: Candidate[] = [];
 
   for (const item of items) {
+    if (isThinProductTitle(item.title)) continue;
     if (!isNationalEnough(item.title, item.summary)) continue;
 
     const dedupe = await findDuplicate(kv, {
@@ -127,13 +135,15 @@ async function main(): Promise<void> {
     const fullSummary = await buildFullSummary({
       rssSummary: item.summary,
       articleLink: item.link,
-      maxLen: 900,
+      maxLen: 1400,
     });
 
     const originalTitle = sanitizePostText(item.title);
     let title = originalTitle;
     let summary = sanitizePostText(fullSummary || item.summary);
     if (!title || looksLikeUiJunk(title) || looksLikeUiJunk(summary)) continue;
+    // Need a real article lead before we bother translating.
+    if (summary.length < 160) continue;
 
     const needRu = item.lang === "en" || !looksRussian(`${title}\n${summary}`);
     if (needRu) {
@@ -142,15 +152,27 @@ async function main(): Promise<void> {
     }
 
     title = polishRussian(sanitizePostText(title));
-    summary = polishRussian(sanitizePostText(shortenSummary(summary, 520)));
+    summary = polishRussian(sanitizePostText(summary));
+    // Explain US-specific terms for readers who don't follow the country.
+    summary = withOutsiderContext(title, summary);
+    summary = polishRussian(
+      sanitizePostText(shortenSummary(summary, BODY_MAX_LEN, BODY_MAX_SENTENCES)),
+    );
 
     if (title.length < 12) continue;
-    if (!looksRussian(title)) continue;
-
-    const mode = detectPostMode({ title, summary });
-    if (mode !== "flash" && (summary.length < 80 || !looksRussian(summary))) {
+    if (!looksRussian(title) || !looksRussian(summary)) continue;
+    if (!isExplainableBody(title, summary)) {
+      console.log(
+        JSON.stringify({
+          skipped: true,
+          reason: "not_explainable",
+          title,
+        }),
+      );
       continue;
     }
+
+    const mode = detectPostMode({ title, summary });
 
     // Dedupe again against polished RU title (catches prior translations).
     const ruDup = await findDuplicate(kv, { link: item.link, title });

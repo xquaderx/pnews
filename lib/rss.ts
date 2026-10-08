@@ -238,13 +238,8 @@ export const US_FEEDS: ReadonlyArray<UsFeed> = [
     kind: "tech",
   },
 
-  // Weather / disasters
-  {
-    source: "NHC Atlantic",
-    url: "https://www.nhc.noaa.gov/index-at.xml",
-    lang: "en",
-    kind: "weather",
-  },
+  // Weather / disasters come from general/politics feeds (narrative articles).
+  // Raw NHC map/graphic products are rejected in explain.ts — not explainable news.
 ];
 
 /** True when story is about the US / US politics. */

@@ -65,12 +65,7 @@ export function detectPostMode(input: {
   summary: string;
 }): PostMode {
   const blob = `${input.title}\n${input.summary}`;
-  if (
-    /\b(breaking|just in|developing)\b/i.test(blob) ||
-    /\b(срочно|только что)\b/i.test(blob)
-  ) {
-    return "flash";
-  }
+  // Never use "flash" (headline-only) — readers need full context.
   if (
     /\b(impeach|assassin|nuclear|invasion|declare(?:s|d)? war|mass shooting|supreme court rules|emergency)\b/i.test(
       blob,
@@ -81,8 +76,6 @@ export function detectPostMode(input: {
   ) {
     return "important";
   }
-  // Very short confirmed fact → flash
-  if (input.summary.length < 100 && input.title.length < 90) return "flash";
   return "normal";
 }
 

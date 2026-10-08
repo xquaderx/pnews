@@ -15,13 +15,13 @@ export async function buildFullSummary(input: {
   articleLink: string;
   maxLen?: number;
 }): Promise<string> {
-  const maxLen = input.maxLen ?? 900;
+  const maxLen = input.maxLen ?? 1400;
   let text = stripReadMoreBoilerplate(stripHtml(input.rssSummary));
   if (looksLikeUiJunk(text)) text = "";
 
-  // Always enrich from the page when the RSS blurb is thin on context.
+  // Almost always enrich from the page — RSS blurbs are too thin for newcomers.
   const needsMore =
-    text.length < 320 ||
+    text.length < 500 ||
     !hasContextCues(text) ||
     /\bleia\s+mais\b/i.test(input.rssSummary) ||
     /\bcontinue\s+lendo\b|\bread\s+more\b/i.test(input.rssSummary);
@@ -85,7 +85,7 @@ function mergeLeads(a: string, b: string): string {
     if (!key || seen.has(key)) continue;
     seen.add(key);
     out.push(s.trim());
-    if (out.length >= 6) break;
+    if (out.length >= 8) break;
   }
   return out.join(" ");
 }
@@ -135,7 +135,7 @@ async function extractArticleText(url: string): Promise<string | null> {
             p,
           ),
       )
-      .slice(0, 6);
+      .slice(0, 8);
 
     const fromPars = stripReadMoreBoilerplate(paragraphs.join(" "));
     if (fromPars.length >= 120 && !looksLikeUiJunk(fromPars)) {

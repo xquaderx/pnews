@@ -21,7 +21,6 @@ const TRUSTED_SOURCES = new Set([
   "bbc business",
   "cnbc",
   "techcrunch",
-  "nhc atlantic",
   "associated press",
   "reuters",
 ]);
