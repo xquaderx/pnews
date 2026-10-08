@@ -1,0 +1,17 @@
+{
+  "name": "p-news",
+  "private": true,
+  "type": "module",
+  "description": "P News 🇺🇸 — Telegram channel @PolozNewss (US news in Russian)",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "publish:once": "tsx scripts/publish-cycle.ts",
+    "publish:forever": "bash scripts/run-forever.sh",
+    "seed:history": "tsx scripts/seed-history.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "tsx": "^4.23.15",
+    "typescript": "6.0.3"
+  }
+}
