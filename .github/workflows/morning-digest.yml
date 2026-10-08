@@ -1,0 +1,40 @@
+# Daily morning digest for @PolozNewss (UTC 11:00 ≈ Moscow morning).
+name: morning-digest
+
+on:
+  schedule:
+    - cron: "0 11 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: morning-digest-poloz
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Restore dedupe state
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: posted-kv-poloz-digest-${{ github.run_id }}
+          restore-keys: |
+            posted-kv-poloz-
+
+      - name: Morning digest
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+        run: npm run digest:morning

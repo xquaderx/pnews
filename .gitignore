@@ -3,3 +3,4 @@ node_modules
 .env.local
 data/posted-kv.json
 logs/
+data/seed-report.json

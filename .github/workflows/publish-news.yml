@@ -14,7 +14,7 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -30,14 +30,18 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data
-          # Unique key each run → always save; restore-keys pulls newest prior cache.
           key: posted-kv-poloz-${{ github.run_id }}
           restore-keys: |
             posted-kv-poloz-
 
       - name: Seed history from public channel
-        # Marks existing @PolozNewss headlines so Actions never re-posts old news.
         run: npm run seed:history
+
+      - name: Ensure pin + description
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+        run: npm run ensure:channel
 
       - name: Publish newest news
         env:

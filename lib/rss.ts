@@ -9,7 +9,10 @@ export type NewsItem = {
   source: string;
   imageUrl: string | null;
   lang: "ru" | "en";
+  kind: FeedKind;
 };
+
+export type FeedKind = "politics" | "economy" | "tech" | "weather" | "crime" | "general";
 
 export async function readFeedText(response: Response): Promise<string> {
   const buf = Buffer.from(await response.arrayBuffer());
@@ -41,7 +44,6 @@ function tagContent(block: string, tag: string): string | null {
 function unwrapRedirectLink(link: string): string {
   const starred = link.match(/\*(https?:\/\/\S+)/i);
   if (starred?.[1]) return starred[1];
-  // Google News wrapper
   try {
     const url = new URL(link);
     if (url.hostname.includes("news.google.")) {
@@ -84,6 +86,7 @@ export function parseRss(
   xml: string,
   source: string,
   lang: "ru" | "en",
+  kind: FeedKind = "general",
 ): NewsItem[] {
   const items: NewsItem[] = [];
   const blocks = xml.match(/<item[\s>][\s\S]*?<\/item>/gi) ??
@@ -116,6 +119,7 @@ export function parseRss(
       source,
       imageUrl: imageFromItem(block),
       lang,
+      kind,
     });
   }
 
@@ -126,46 +130,120 @@ export type UsFeed = {
   source: string;
   url: string;
   lang: "ru" | "en";
+  kind: FeedKind;
   /** When true, keep only US-related items (for mixed world feeds). */
   requireUs?: boolean;
 };
 
 export const US_FEEDS: ReadonlyArray<UsFeed> = [
+  // Politics
   {
     source: "The Hill",
     url: "https://thehill.com/feed/",
     lang: "en",
+    kind: "politics",
   },
   {
     source: "NPR",
     url: "https://feeds.npr.org/1001/rss.xml",
     lang: "en",
+    kind: "general",
   },
   {
     source: "NYT Politics",
     url: "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml",
     lang: "en",
+    kind: "politics",
   },
   {
     source: "CBS Politics",
     url: "https://www.cbsnews.com/latest/rss/politics",
     lang: "en",
+    kind: "politics",
   },
   {
     source: "ABC Politics",
     url: "https://abcnews.go.com/abcnews/politicsheadlines",
     lang: "en",
+    kind: "politics",
   },
   {
     source: "BBC US & Canada",
     url: "https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml",
     lang: "en",
+    kind: "politics",
   },
   {
     source: "BBC Russian",
     url: "https://feeds.bbci.co.uk/russian/rss.xml",
     lang: "ru",
+    kind: "politics",
     requireUs: true,
+  },
+  {
+    source: "CBS US",
+    url: "https://www.cbsnews.com/latest/rss/us",
+    lang: "en",
+    kind: "general",
+  },
+
+  // Economy
+  {
+    source: "NYT Business",
+    url: "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+    lang: "en",
+    kind: "economy",
+    requireUs: true,
+  },
+  {
+    source: "CNBC",
+    url: "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+    lang: "en",
+    kind: "economy",
+    requireUs: true,
+  },
+  {
+    source: "NPR Business",
+    url: "https://feeds.npr.org/1017/rss.xml",
+    lang: "en",
+    kind: "economy",
+  },
+  {
+    source: "BBC Business",
+    url: "https://feeds.bbci.co.uk/news/business/rss.xml",
+    lang: "en",
+    kind: "economy",
+    requireUs: true,
+  },
+
+  // Tech
+  {
+    source: "NYT Technology",
+    url: "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
+    lang: "en",
+    kind: "tech",
+    requireUs: true,
+  },
+  {
+    source: "TechCrunch",
+    url: "https://feeds.feedburner.com/TechCrunch",
+    lang: "en",
+    kind: "tech",
+    requireUs: true,
+  },
+  {
+    source: "NPR Science",
+    url: "https://feeds.npr.org/1007/rss.xml",
+    lang: "en",
+    kind: "tech",
+  },
+
+  // Weather / disasters
+  {
+    source: "NHC Atlantic",
+    url: "https://www.nhc.noaa.gov/index-at.xml",
+    lang: "en",
+    kind: "weather",
   },
 ];
 
@@ -177,12 +255,15 @@ export function isAboutUs(title: string, summary: string): boolean {
     /\b(White House|Congress|Senate|House of Representatives|Pentagon|FBI|CIA|SCOTUS|Supreme Court)\b/i.test(
       text,
     ) ||
-    /\b(Trump|Biden|Harris|Vance|Obama|Newsom|RFK|Musk)\b/i.test(text) ||
+    /\b(Trump|Biden|Harris|Vance|Obama|Newsom|RFK|Musk|SpaceX|Nvidia|Apple|Tesla|Fed|Wall Street|Silicon Valley)\b/i.test(
+      text,
+    ) ||
     /\b(California|Texas|Florida|Washington|New York|Iowa)\b/i.test(text) ||
     /\b(США|Америк|Вашингтон|Белый дом|Конгресс|Сенат|Пентагон)\b/i.test(
       text,
     ) ||
-    /\b(Трамп|Байден|Харрис|Вэнс|Обама|Ньюсом)\b/i.test(text)
+    /\b(Трамп|Байден|Харрис|Вэнс|Обама|Ньюсом|Маск)\b/i.test(text) ||
+    /\b(hurricane|tropical storm|wildfire|tornado)\b/i.test(text)
   );
 }
 

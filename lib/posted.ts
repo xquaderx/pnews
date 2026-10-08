@@ -119,7 +119,7 @@ export function titleTokens(title: string): Set<string> {
 }
 
 /** Jaccard / containment — true if looks like the same story. */
-export function isSimilarTitle(a: string, b: string, threshold = 0.58): boolean {
+export function isSimilarTitle(a: string, b: string, threshold = 0.5): boolean {
   const ta = titleTokens(a);
   const tb = titleTokens(b);
   if (ta.size === 0 || tb.size === 0) return false;

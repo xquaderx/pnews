@@ -7,7 +7,9 @@
     "check": "tsc --noEmit",
     "publish:once": "tsx scripts/publish-cycle.ts",
     "publish:forever": "bash scripts/run-forever.sh",
-    "seed:history": "tsx scripts/seed-history.ts"
+    "seed:history": "tsx scripts/seed-history.ts",
+    "ensure:channel": "tsx scripts/ensure-channel.ts",
+    "digest:morning": "tsx scripts/morning-digest.ts"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

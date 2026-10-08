@@ -131,6 +131,38 @@ export async function getTelegramChat(input: {
   };
 }
 
+export async function pinTelegramMessage(input: {
+  token: string;
+  chatId: string;
+  messageId: number;
+  disableNotification?: boolean;
+}): Promise<{ ok: boolean; error?: string }> {
+  const body = await telegramApi(input.token, "pinChatMessage", {
+    chat_id: input.chatId,
+    message_id: input.messageId,
+    disable_notification: input.disableNotification ?? true,
+  });
+  if (!body.ok) {
+    return { ok: false, error: body.description ?? "pinChatMessage failed" };
+  }
+  return { ok: true };
+}
+
+export async function setTelegramChatDescription(input: {
+  token: string;
+  chatId: string;
+  description: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const body = await telegramApi(input.token, "setChatDescription", {
+    chat_id: input.chatId,
+    description: input.description.slice(0, 255),
+  });
+  if (!body.ok) {
+    return { ok: false, error: body.description ?? "setChatDescription failed" };
+  }
+  return { ok: true };
+}
+
 /** Escape text for Telegram HTML parse_mode. */
 export function escapeHtml(text: string): string {
   return text

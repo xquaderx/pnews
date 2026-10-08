@@ -10,8 +10,18 @@ import { assessCredibility } from "../lib/credibility.js";
 import { findDuplicate, rememberPosted } from "../lib/dedupe.js";
 import { createFileKv } from "../lib/file-kv.js";
 import { resolveNewsImage } from "../lib/image.js";
-import { buildNewsCaption, shortenSummary } from "../lib/post-format.js";
+import {
+  buildBrasilCrossPromo,
+  buildNewsCaption,
+  shortenSummary,
+} from "../lib/post-format.js";
 import { isSimilarTitle } from "../lib/posted.js";
+import { polishRussian } from "../lib/ru-polish.js";
+import {
+  detectPostMode,
+  extractQuote,
+  isNationalEnough,
+} from "../lib/select.js";
 import { looksLikeUiJunk, sanitizePostText } from "../lib/text.js";
 import { translateToRu } from "../lib/translate.js";
 import {
@@ -26,6 +36,7 @@ import {
 } from "../lib/rss.js";
 import {
   seedMessageReaction,
+  sendTelegramMessage,
   sendTelegramPhoto,
 } from "../lib/telegram.js";
 
@@ -53,6 +64,9 @@ function loadEnvFile(path: string): void {
 loadEnvFile(resolve(".env.local"));
 loadEnvFile(resolve(".env"));
 
+const CROSS_PROMO_KEY = "meta:brasil-cross-promo";
+const CROSS_PROMO_EVERY_MS = 1000 * 60 * 60 * 48;
+
 async function main(): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
   const chatId = process.env.TELEGRAM_CHANNEL_ID?.trim();
@@ -61,17 +75,24 @@ async function main(): Promise<void> {
   }
 
   const kv = createFileKv(resolve("data/posted-kv.json"));
+  await maybeCrossPromo(kv, token, chatId);
+
   const items = await fetchCandidates();
 
   type Candidate = {
     item: NewsItem;
+    originalTitle: string;
     score: number;
     imageUrl: string;
     summary: string;
+    mode: ReturnType<typeof detectPostMode>;
+    quote: string | null;
   };
   const candidates: Candidate[] = [];
 
   for (const item of items) {
+    if (!isNationalEnough(item.title, item.summary)) continue;
+
     const dedupe = await findDuplicate(kv, {
       link: item.link,
       title: item.title,
@@ -82,7 +103,8 @@ async function main(): Promise<void> {
       candidates.some(
         (c) =>
           c.item.link === item.link ||
-          isSimilarTitle(c.item.title, item.title),
+          isSimilarTitle(c.item.title, item.title) ||
+          isSimilarTitle(c.originalTitle, item.title),
       )
     ) {
       continue;
@@ -108,7 +130,8 @@ async function main(): Promise<void> {
       maxLen: 900,
     });
 
-    let title = sanitizePostText(item.title);
+    const originalTitle = sanitizePostText(item.title);
+    let title = originalTitle;
     let summary = sanitizePostText(fullSummary || item.summary);
     if (!title || looksLikeUiJunk(title) || looksLikeUiJunk(summary)) continue;
 
@@ -118,22 +141,33 @@ async function main(): Promise<void> {
       summary = await translateToRu(kv, summary);
     }
 
-    // ~3–4 sentences with who/what/why — still fits Telegram photo caption.
-    summary = shortenSummary(summary, 520);
-    title = sanitizePostText(title);
-    summary = sanitizePostText(summary);
-    if (title.length < 12 || summary.length < 80) continue;
-    // Title must be RU — body-only Cyrillic must not let English headlines through.
-    if (!looksRussian(title) || !looksRussian(summary)) continue;
+    title = polishRussian(sanitizePostText(title));
+    summary = polishRussian(sanitizePostText(shortenSummary(summary, 520)));
+
+    if (title.length < 12) continue;
+    if (!looksRussian(title)) continue;
+
+    const mode = detectPostMode({ title, summary });
+    if (mode !== "flash" && (summary.length < 80 || !looksRussian(summary))) {
+      continue;
+    }
+
+    // Dedupe again against polished RU title (catches prior translations).
+    const ruDup = await findDuplicate(kv, { link: item.link, title });
+    if (ruDup.duplicate) continue;
 
     candidates.push({
       item: { ...item, title, summary },
-      score: credibility.score,
+      originalTitle,
+      score: credibility.score + kindBonus(item.kind),
       imageUrl,
       summary,
+      mode,
+      quote: extractQuote(summary),
     });
   }
 
+  // Prefer mix: avoid posting 2 pure politics if economy/tech available.
   candidates.sort((a, b) => {
     const byTime =
       publishedSortKey(b.item.publishedAt) - publishedSortKey(a.item.publishedAt);
@@ -144,9 +178,25 @@ async function main(): Promise<void> {
   const maxPerCycle = Number(process.env.MAX_POSTS_PER_CYCLE ?? "2");
   let posted = 0;
   let failed = 0;
+  const usedKinds = new Set<string>();
 
   for (const best of candidates) {
     if (posted >= Math.max(1, maxPerCycle)) break;
+
+    // Soft diversity: if we already posted politics, prefer another kind once.
+    if (
+      posted > 0 &&
+      usedKinds.has("politics") &&
+      best.item.kind === "politics" &&
+      candidates.some(
+        (c) =>
+          c.item.kind !== "politics" &&
+          !usedKinds.has(c.item.kind) &&
+          c !== best,
+      )
+    ) {
+      continue;
+    }
 
     const again = await findDuplicate(kv, {
       link: best.item.link,
@@ -166,6 +216,9 @@ async function main(): Promise<void> {
     const caption = buildNewsCaption({
       title: best.item.title,
       summary: best.summary,
+      source: best.item.source,
+      mode: best.mode,
+      quote: best.quote,
     });
 
     const result = await sendTelegramPhoto({
@@ -191,7 +244,15 @@ async function main(): Promise<void> {
       title: best.item.title,
       messageId: result.messageId,
     });
+    // Also fingerprint the English title so translated rewrites don't repost.
+    if (best.originalTitle !== best.item.title) {
+      await rememberPosted(kv, {
+        link: `${best.item.link}#en-title`,
+        title: best.originalTitle,
+      });
+    }
     posted += 1;
+    usedKinds.add(best.item.kind);
 
     console.log(
       JSON.stringify({
@@ -199,6 +260,8 @@ async function main(): Promise<void> {
         messageId: result.messageId,
         title: best.item.title,
         source: best.item.source,
+        kind: best.item.kind,
+        mode: best.mode,
         score: best.score,
         publishedAt: best.item.publishedAt,
       }),
@@ -220,6 +283,36 @@ async function main(): Promise<void> {
   }
 }
 
+function kindBonus(kind: NewsItem["kind"]): number {
+  if (kind === "economy" || kind === "tech" || kind === "weather") return 5;
+  return 0;
+}
+
+async function maybeCrossPromo(
+  kv: ReturnType<typeof createFileKv>,
+  token: string,
+  chatId: string,
+): Promise<void> {
+  const prev = (await kv.get(CROSS_PROMO_KEY)) as
+    | { at?: string }
+    | undefined;
+  const last = prev?.at ? Date.parse(prev.at) : 0;
+  if (Number.isFinite(last) && Date.now() - last < CROSS_PROMO_EVERY_MS) {
+    return;
+  }
+  const result = await sendTelegramMessage({
+    token,
+    chatId,
+    text: buildBrasilCrossPromo(),
+  });
+  if (!result.ok) {
+    console.error("cross_promo_failed", result.error);
+    return;
+  }
+  await kv.put(CROSS_PROMO_KEY, { at: new Date().toISOString(), messageId: result.messageId });
+  console.log(JSON.stringify({ cross_promo: true, messageId: result.messageId }));
+}
+
 async function fetchCandidates(): Promise<NewsItem[]> {
   const byLink = new Map<string, NewsItem>();
   await Promise.all(
@@ -237,6 +330,7 @@ async function fetchCandidates(): Promise<NewsItem[]> {
           await readFeedText(response),
           feed.source,
           feed.lang,
+          feed.kind,
         )) {
           if (feed.requireUs && !isAboutUs(item.title, item.summary)) continue;
           if (!byLink.has(item.link)) byLink.set(item.link, item);
@@ -253,7 +347,7 @@ async function fetchCandidates(): Promise<NewsItem[]> {
     .sort(
       (a, b) => publishedSortKey(b.publishedAt) - publishedSortKey(a.publishedAt),
     )
-    .slice(0, 40);
+    .slice(0, 50);
 }
 
 main().catch((err) => {
