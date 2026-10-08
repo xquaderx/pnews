@@ -1,5 +1,5 @@
 import { escapeHtml } from "./telegram.js";
-import { sanitizePostText } from "./text.js";
+import { looksLikeUiJunk, sanitizePostText } from "./text.js";
 import type { FeedKind } from "./rss.js";
 import { cleanHeadline, type PostMode } from "./select.js";
 
@@ -99,8 +99,10 @@ export function toPinParagraphs(
     }
   }
   if (buf && pins.length < maxPins) pins.push(buf);
-  // Drop any pin that somehow still looks torn.
-  return pins.filter((p) => !looksTornText(p)).slice(0, maxPins);
+  // Drop torn / scraped-UI pins (video JS chrome, headline mash, etc.).
+  return pins
+    .filter((p) => !looksTornText(p) && !looksLikeUiJunk(p))
+    .slice(0, maxPins);
 }
 
 function removeQuoteFromBody(body: string, quote: string): string {
@@ -273,6 +275,8 @@ export function dropTornFragments(text: string): string {
     if (!s) continue;
     // Ellipsis / "read more" teaser — never ship.
     if (/\.\.\.|…/.test(s)) continue;
+    if (looksLikeUiJunk(s)) continue;
+    if (/javascript|воспроизвести\s+это\s+видео|смотреть\s*:/i.test(s)) continue;
     // Must end with real sentence punctuation.
     if (!/[.!?]$/.test(s)) continue;
     // Dangling "who?" stubs.

@@ -210,6 +210,41 @@ export function stripReadMoreBoilerplate(text: string): string {
       /\b(the\s+post\s+.+?\s+appeared\s+first\s+on\b[\s\S]*)$/i,
       "",
     )
+    // Video player chrome (EN/RU) scraped into article body.
+    .replace(
+      /to\s+play\s+this\s+video[\s\S]{0,160}?browser\.?/gi,
+      " ",
+    )
+    .replace(
+      /this\s+video\s+(?:cannot|can'?t|can\s+not)\s+be\s+play(?:ed)?\.?/gi,
+      " ",
+    )
+    .replace(
+      /чтобы\s+воспроизвести\s+это\s+видео[\s\S]{0,160}?браузере\.?/gi,
+      " ",
+    )
+    .replace(/это\s+видео\s+нельзя\s+проигрывать\.?/gi, " ")
+    .replace(/enable\s+javascript[\s\S]{0,100}?browser\.?/gi, " ")
+    .replace(/\bjavascript\b/gi, " ")
+    .replace(/\bв\s+браузере\.*/gi, " ")
+    // "Watch: Headline Mash Headline Mash" related-video stacks.
+    .replace(
+      /(?:^|[.!?]\s*)(?:watch|смотреть|смотри|video|видео)\s*:\s*[^.!?]*?(?=(?:[.!?]|$))/gi,
+      ". ",
+    )
+    // Related-video headline mash (Pike story and similar CMS blocks).
+    .replace(
+      /что\s+мы\s+знаем\s+о\s*«?беспрецедентн[^.]{0,160}/gi,
+      " ",
+    )
+    .replace(
+      /неудачная\s+казнь\s+приговоренн[^.]{0,120}пайк/gi,
+      " ",
+    )
+    .replace(
+      /система\s+уголовного\s+правосудия\s+теннесси\s+на\s+неизведанной\s+территории\.?/gi,
+      " ",
+    )
     .replace(/\bAP\s+Photo\/[^.]*\.?/gi, "")
     .replace(/\b©\s*[^.]*\.?/g, "")
     .replace(/\b(?:class|aria-[a-z]+|aria|svg|href|src|data-[a-z0-9_-]+|role)=["'][^"']*["']/gi, " ")
@@ -233,12 +268,26 @@ export function stripReadMoreBoilerplate(text: string): string {
   return stripOutletBranding(cleaned);
 }
 
-/** True when text looks like scraped UI / CSS, not journalism. */
+/** True when text looks like scraped UI / CSS / video chrome, not journalism. */
 export function looksLikeUiJunk(text: string): boolean {
   if (/aria-|class=|svg]|rounded-|gap-|flex |items-|justify-/i.test(text)) {
     return true;
   }
   if (/ative nossas notifica|receber notifica|abrir notifica/i.test(text)) {
+    return true;
+  }
+  if (
+    /javascript|воспроизвести\s+это\s+видео|видео\s+нельзя\s+проигрывать|to\s+play\s+this\s+video|this\s+video\s+cannot/i.test(
+      text,
+    )
+  ) {
+    return true;
+  }
+  // Stacked related-headlines blob (few periods, many Title Case runs).
+  const periods = (text.match(/[.!?]/g) ?? []).length;
+  const capsRuns = (text.match(/[A-ZА-ЯЁ][a-zа-яё]+(?:\s+[A-ZА-ЯЁ][a-zа-яё]+){3,}/g) ?? [])
+    .length;
+  if (text.length > 120 && periods <= 1 && capsRuns >= 2) {
     return true;
   }
   if ((text.match(/[-:]/g) ?? []).length > 12 && /\b(mx|px|gap|rounded)\b/i.test(text)) {

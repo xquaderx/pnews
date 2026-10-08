@@ -20,6 +20,8 @@ const NAME_MAP: Array<[RegExp, string]> = [
   [/\bObama\b/g, "Обама"],
   [/\bChrista Pike\b/gi, "Криста Пайк"],
   [/\bKrista Pike\b/gi, "Криста Пайк"],
+  [/с\s+Кристои\s+Пайк/gi, "с Кристой Пайк"],
+  [/Кристои\s+Пайк/gi, "Кристой Пайк"],
   [/\bKen Paxton\b/gi, "Кен Пэкстон"],
   [/\bPaxton\b/g, "Пэкстон"],
   [/\bHenry Cuellar\b/gi, "Генри Куэльяр"],
@@ -114,6 +116,10 @@ export function looksBrokenRussian(text: string): boolean {
   if (/\bв Атлантике сезон\b/i.test(text)) return true;
   if (/торговом центре америка/i.test(text)) return true;
   if (/под дулом пистолета/i.test(text)) return true;
+  if (/javascript|воспроизвести\s+это\s+видео|видео\s+нельзя\s+проигрывать/i.test(text)) {
+    return true;
+  }
+  if (/смотреть\s*:\s*что\s+мы\s+знаем/i.test(text)) return true;
   // Too much leftover English in a "Russian" post.
   const cyr = (text.match(/[А-Яа-яЁё]/g) ?? []).length;
   const lat = (text.match(/[A-Za-z]/g) ?? []).length;
