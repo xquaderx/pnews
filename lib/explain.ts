@@ -64,14 +64,16 @@ export function isThinProductTitle(title: string): boolean {
 export function isExplainableBody(title: string, summary: string): boolean {
   if (isThinProductTitle(title)) return false;
   const s = summary.replace(/\s+/g, " ").trim();
-  if (s.length < 200) return false;
+  if (s.length < 160) return false;
   const sentences = (s.match(/[.!?…]/g) ?? []).length;
-  if (sentences < 3) return false;
+  // Prefer 3+ sentences; allow 2 if the body is already long and concrete.
+  if (sentences < 2) return false;
+  if (sentences < 3 && s.length < 260) return false;
   const hasWhoWhat =
-    /(это|который|которая|президент|губернатор|сенатор|судья|компани|власт|обвиня|ураган|шторм|суд|Конгресс|Белый дом|тюрм|штат|выбор)/i.test(
+    /(это|который|которая|президент|губернатор|сенатор|судья|компани|власт|обвиня|ураган|шторм|суд|Конгресс|Белый дом|тюрм|штат|выбор|казн|ФБР|ФРС|Ставк)/i.test(
       s,
     ) ||
-    /\b(president|governor|senator|judge|company|charged|hurricane|storm|court|Congress|prison|state)\b/i.test(
+    /\b(president|governor|senator|judge|company|charged|hurricane|storm|court|Congress|prison|state|executed|rate)\b/i.test(
       s,
     );
   return hasWhoWhat;
