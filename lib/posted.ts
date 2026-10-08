@@ -161,7 +161,7 @@ export function isSimilarTitle(a: string, b: string, threshold = 0.42): boolean 
   if (smaller >= 3 && inter / smaller >= 0.72) return true;
   if (smaller >= 4 && inter >= 3) return true;
   // Same named subject + same topic, even when outlets rewrite the angle.
-  const longShared = [...ta].filter((t) => tb.has(t) && t.length >= 5);
+  const longShared = [...ta].filter((t) => tb.has(t) && t.length >= 4);
   if (longShared.length >= 2) {
     const topic =
       /\b(execut|inject|hurricane|storm|indict|impeach|pardon|rally|debate|midterm|казни|инъекц|ураган|шторм|митинг|помилов|сенат|выбор)/i;
