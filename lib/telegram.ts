@@ -111,6 +111,7 @@ export async function getTelegramChat(input: {
   linkedChatId?: number;
   availableReactions?: unknown;
   title?: string;
+  pinnedMessageId?: number;
 }> {
   const body = await telegramApi(input.token, "getChat", {
     chat_id: input.chatId,
@@ -122,13 +123,30 @@ export async function getTelegramChat(input: {
     linked_chat_id?: number;
     available_reactions?: unknown;
     title?: string;
+    pinned_message?: { message_id?: number };
   };
   return {
     ok: true,
     linkedChatId: result.linked_chat_id,
     availableReactions: result.available_reactions,
     title: result.title,
+    pinnedMessageId: result.pinned_message?.message_id,
   };
+}
+
+export async function deleteTelegramMessage(input: {
+  token: string;
+  chatId: string;
+  messageId: number;
+}): Promise<{ ok: boolean; error?: string }> {
+  const body = await telegramApi(input.token, "deleteMessage", {
+    chat_id: input.chatId,
+    message_id: input.messageId,
+  });
+  if (!body.ok) {
+    return { ok: false, error: body.description ?? "deleteMessage failed" };
+  }
+  return { ok: true };
 }
 
 export async function pinTelegramMessage(input: {

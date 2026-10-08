@@ -26,8 +26,21 @@ export function isNationalEnough(title: string, summary: string): boolean {
     return true;
   }
 
-  // State races without a national figure → skip.
-  if (LOCAL_RACE.test(blob) && STATE_WITHOUT_NATIONAL.test(blob)) {
+  // State races / debate roundups without a national figure → skip.
+  if (
+    (LOCAL_RACE.test(blob) || /\b(\d+)\s+takeaways?\b/i.test(blob) || /\b\d+\s+вывода\b/i.test(blob)) &&
+    STATE_WITHOUT_NATIONAL.test(blob) &&
+    !NATIONAL_FIGURES.test(blob) &&
+    !NATIONAL_FIGURES_RU.test(blob)
+  ) {
+    return false;
+  }
+  // Generic "N takeaways" from state governor debates — low value for national feed.
+  if (
+    /\b(governor(?:'s)? debate|gubernatorial)\b/i.test(blob) &&
+    !NATIONAL_FIGURES.test(blob) &&
+    !/\b(Trump|Biden|Harris|Vance)\b/i.test(blob)
+  ) {
     return false;
   }
 

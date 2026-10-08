@@ -54,7 +54,10 @@ async function main(): Promise<void> {
     chatId,
     description: DESC,
   });
-  console.log(JSON.stringify({ description: desc }));
+  const descOk =
+    desc.ok ||
+    /not modified/i.test(desc.error ?? "");
+  console.log(JSON.stringify({ description: { ok: descOk, error: desc.error } }));
 
   const chat = await getTelegramChat({ token, chatId });
   console.log(
@@ -67,10 +70,34 @@ async function main(): Promise<void> {
     }),
   );
 
+  // Prefer live pinned_message over kv (Actions cache may miss local pin).
+  if (chat.pinnedMessageId) {
+    await kv.put(PIN_KEY, {
+      messageId: chat.pinnedMessageId,
+      at: new Date().toISOString(),
+    });
+    console.log(
+      JSON.stringify({ pin: "already_pinned", messageId: chat.pinnedMessageId }),
+    );
+    return;
+  }
+
   const existing = (await kv.get(PIN_KEY)) as { messageId?: number } | undefined;
   if (existing?.messageId) {
-    console.log(JSON.stringify({ pin: "already_set", messageId: existing.messageId }));
-    return;
+    const pinned = await pinTelegramMessage({
+      token,
+      chatId,
+      messageId: existing.messageId,
+      disableNotification: true,
+    });
+    console.log(
+      JSON.stringify({
+        pin: pinned.ok ? "re-pinned" : "pin_missing",
+        messageId: existing.messageId,
+        error: pinned.error,
+      }),
+    );
+    if (pinned.ok) return;
   }
 
   const sent = await sendTelegramMessage({
