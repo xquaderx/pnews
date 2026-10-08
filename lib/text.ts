@@ -43,10 +43,46 @@ export function decodeEntities(text: string): string {
   return cur;
 }
 
+/** Remove outlet self-promo from titles/bodies (Fox, CNN, Reuters exclusives, etc.). */
+export function stripOutletBranding(text: string): string {
+  return text
+    .replace(
+      /^\s*(first\s+on\s+(fox(?:\s*news)?|cnn|msnbc|nbc|abc|cbs|reuters|ap|bloomberg|politico|the\s+hill)\s*[:\-–—]\s*)/i,
+      "",
+    )
+    .replace(
+      /^\s*((?:в\s*)?первые\s+на\s+(?:канале\s+)?(?:fox(?:\s*news)?|cnn|msnbc|nbc|abc|cbs|reuters|bloomberg|politico)\s*[:\-–—]\s*)/i,
+      "",
+    )
+    .replace(
+      /\b(first\s+on\s+(fox(?:\s*news)?|cnn|msnbc|nbc|abc|cbs|reuters|ap|bloomberg|politico|the\s+hill)\s*[:\-–—]\s*)/gi,
+      "",
+    )
+    .replace(
+      /((?:в\s*)?первые\s+на\s+(?:канале\s+)?(?:fox(?:\s*news)?|cnn|msnbc|nbc|abc|cbs|reuters|bloomberg|politico)\s*[:\-–—]\s*)/gi,
+      "",
+    )
+    .replace(
+      /\b(exclusive(?:ly)?\s+(?:to|from)\s+(fox(?:\s*news)?|cnn|reuters|ap|bloomberg)\b[:\-–—]?\s*)/gi,
+      "",
+    )
+    .replace(/\b(fox\s*news\s+exclusive\s*[:\-–—]\s*)/gi, "")
+    .replace(
+      /\((fox(?:\s*news)?|cnn|msnbc|reuters|ap|bloomberg|politico|the\s+hill)\)\s*$/gi,
+      "",
+    )
+    .replace(
+      /\s*[-–—]\s*(fox(?:\s*news)?|cnn|msnbc|reuters|ap|bloomberg|politico|the\s+hill)\s*$/gi,
+      "",
+    )
+    .replace(/\s{2,}/g, " ")
+    .replace(/^\s*[:\-–—]\s*/, "")
+    .trim();
+}
+
 /** Remove "read more", site CTAs and scraped UI chrome. */
 export function stripReadMoreBoilerplate(text: string): string {
-  return text
-    // Cut from first site CTA / notification prompt onward.
+  const cleaned = text
     .replace(
       /\b(ative\s+nossas\s+notifica|quero\s+receber\s+notifica|receber\s+notifica|inscreva-se|assine\s+a\s+newsletter|cadastre-se|clique\s+aqui|acesse\s+aqui|veja\s+também|veja\s+tambem|relacionadas?|publicidade|anúncio|anuncio)\b[\s\S]*$/i,
       "",
@@ -65,7 +101,6 @@ export function stripReadMoreBoilerplate(text: string): string {
     )
     .replace(/\bAP\s+Photo\/[^.]*\.?/gi, "")
     .replace(/\b©\s*[^.]*\.?/g, "")
-    // Tailwind / leftover HTML attribute junk from bad scrapes.
     .replace(/\b(?:class|aria-[a-z]+|aria|svg|href|src|data-[a-z0-9_-]+|role)=["'][^"']*["']/gi, " ")
     .replace(/\b(?:class|aria-[a-z]+|aria|svg|href|src|data-[a-z0-9_-]+|role)=[^\s>"']+/gi, " ")
     .replace(
@@ -84,6 +119,7 @@ export function stripReadMoreBoilerplate(text: string): string {
     .replace(/\s{2,}/g, " ")
     .replace(/\s+([,.!?;:])/g, "$1")
     .trim();
+  return stripOutletBranding(cleaned);
 }
 
 /** True when text looks like scraped UI / CSS, not journalism. */
@@ -116,14 +152,16 @@ export function stripHtml(text: string): string {
 
 /** Final cleanup before publishing to Telegram. */
 export function sanitizePostText(text: string): string {
-  const cleaned = stripReadMoreBoilerplate(
-    decodeEntities(text)
-      .replace(/\uFFFD/g, "")
-      .replace(/https?:\/\/\S+/gi, "")
-      .replace(/www\.\S+/gi, "")
-      .replace(/\s{2,}/g, " ")
-      .replace(/\s+([,.!?;:])/g, "$1")
-      .trim(),
+  const cleaned = stripOutletBranding(
+    stripReadMoreBoilerplate(
+      decodeEntities(text)
+        .replace(/\uFFFD/g, "")
+        .replace(/https?:\/\/\S+/gi, "")
+        .replace(/www\.\S+/gi, "")
+        .replace(/\s{2,}/g, " ")
+        .replace(/\s+([,.!?;:])/g, "$1")
+        .trim(),
+    ),
   );
   return looksLikeUiJunk(cleaned) ? "" : cleaned;
 }
