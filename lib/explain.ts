@@ -5,45 +5,46 @@
 
 type Primer = { re: RegExp; text: string };
 
+// Avoid JS \b with Cyrillic — it breaks Russian matching.
 const PRIMERS: Primer[] = [
   {
-    re: /\b(tropical storm|hurricane|ураган|тропическ\w+\s+шторм)\b/i,
+    re: /(tropical storm|hurricane|ураган|тропический шторм|тропического шторма)/i,
     text: "Тропический шторм / ураган — мощный циклон у берегов США: сильный ветер, ливни и риск наводнений на побережье Мексиканского залива и Атлантики.",
   },
   {
-    re: /\b(Guantanamo|Гуантанамо|9\/11|11 сентября)\b/i,
+    re: /(Guantanamo|Гуантанамо|9\/11|11 сентября)/i,
     text: "Гуантанамо — военная тюрьма США на Кубе. Там с начала 2000-х держат людей, которых власти США связывают с терактами 11 сентября 2001 года и войной с террором.",
   },
   {
-    re: /\b(special counsel|специальн\w+\s+прокурор|Letitia James|Летици\w+\s+Джеймс)\b/i,
+    re: /(special counsel|специальн\w+\s+прокурор|Letitia James|Летици\w+\s+Джеймс)/i,
     text: "Специальный прокурор в США — независимый обвинитель по чувствительному делу. Летиция Джеймс — генпрокурор штата Нью-Йорк, известна делами против Трампа.",
   },
   {
-    re: /\b(midterm|промежуточн\w+\s+выбор|House of Representatives|Палат\w+\s+представител)\b/i,
+    re: /(midterm|промежуточн\w+\s+выбор|House of Representatives|Палат\w+\s+представител)/i,
     text: "Промежуточные выборы в США — голосование в Конгресс в середине президентского срока; от них зависит, сможет ли партия президента проводить законы.",
   },
   {
-    re: /\b(FDA|мифепристон|mifepristone)\b/i,
+    re: /(FDA|мифепристон|mifepristone)/i,
     text: "FDA — американский регулятор лекарств и продуктов. Мифепристон — препарат для медикаментозного прерывания беременности; споры о нём идут в судах и политике США.",
   },
   {
-    re: /\b(Starlink|SpaceX)\b/i,
+    re: /(Starlink|SpaceX)/i,
     text: "Starlink — спутниковый интернет компании SpaceX Илона Маска; запуск в новых странах часто упирается в разрешения властей и местных операторов связи.",
   },
   {
-    re: /\b(governor|губернатор|gubernatorial)\b/i,
+    re: /(governor|губернатор|gubernatorial)/i,
     text: "Губернатор в США — глава штата (как президент, но на уровне штата): отвечает за бюджет, законы штата и чрезвычайные ситуации.",
   },
   {
-    re: /\b(White House|Белый дом|Трамп|Trump)\b/i,
+    re: /(White House|Белый дом|\bTrump\b|Трамп)/i,
     text: "Белый дом — резиденция и аппарат президента США. Сейчас президент — Дональд Трамп.",
   },
   {
-    re: /\b(Senate|Сенат|senator|сенатор)\b/i,
+    re: /(Senate|Сенат|senator|сенатор)/i,
     text: "Сенат — верхняя палата Конгресса США: 100 сенаторов, по двое от каждого штата; без Сената не принимают федеральные законы.",
   },
   {
-    re: /\b(mortgage|ипотек|Federal Reserve|ФРС|inflation|инфляц)\b/i,
+    re: /(mortgage|ипотек|Federal Reserve|ФРС|inflation|инфляц)/i,
     text: "Ипотечные ставки и инфляция в США сильно влияют на цены жилья и повседневные расходы; ключевую роль играет Федеральная резервная система (ФРС).",
   },
 ];
@@ -51,14 +52,11 @@ const PRIMERS: Primer[] = [
 /** Titles that are weather products / maps, not explainable news. */
 export function isThinProductTitle(title: string): boolean {
   return (
-    /\b(graphic|graphics|watches?\/warnings?|outlook|discussion|public advisory)\b/i.test(
+    /(graphic|graphics|watches?\/warnings?|outlook|discussion|public advisory)/i.test(
       title,
     ) ||
-    /\b(график[аи]|карта|предупреждени[яй]|часы\/карта|outlook)\b/i.test(
-      title,
-    ) ||
-    /^NHC\b/i.test(title) ||
-    /\bKey Messages\b/i.test(title)
+    /(график[аи]|карта предупрежд|часы\/карта|Key Messages)/i.test(title) ||
+    /^NHC\b/i.test(title)
   );
 }
 
@@ -69,7 +67,6 @@ export function isExplainableBody(title: string, summary: string): boolean {
   if (s.length < 200) return false;
   const sentences = (s.match(/[.!?…]/g) ?? []).length;
   if (sentences < 3) return false;
-  // Cyrillic-friendly cues (avoid JS \b, which breaks on Russian letters).
   const hasWhoWhat =
     /(это|который|которая|президент|губернатор|сенатор|судья|компани|власт|обвиня|ураган|шторм|суд|Конгресс|Белый дом|тюрм|штат|выбор)/i.test(
       s,
@@ -77,23 +74,26 @@ export function isExplainableBody(title: string, summary: string): boolean {
     /\b(president|governor|senator|judge|company|charged|hurricane|storm|court|Congress|prison|state)\b/i.test(
       s,
     );
-  if (!hasWhoWhat) return false;
-  return true;
+  return hasWhoWhat;
 }
 
 /**
- * Prepend 1 short primer if the story touches a US-specific concept
- * and the primer isn't already reflected in the text.
+ * Prepend 1–2 short primers if the story touches a US-specific concept
+ * and the explainer isn't already in the text.
  */
 export function withOutsiderContext(title: string, summary: string): string {
   const blob = `${title}\n${summary}`;
   const extras: string[] = [];
   for (const p of PRIMERS) {
     if (!p.re.test(blob)) continue;
-    const key = p.text.slice(0, 40).toLowerCase();
-    if (summary.toLowerCase().includes(key.slice(0, 24))) continue;
+    // Skip if a distinctive chunk of the primer is already present.
+    const marker = p.text.split(/[—.]/)[0]?.trim().toLowerCase() ?? "";
+    if (marker.length >= 6 && summary.toLowerCase().includes(marker)) {
+      // Still add if primer has a definition the summary lacks (em dash explainer).
+      if (summary.includes("—") || summary.includes("–")) continue;
+    }
     extras.push(p.text);
-    if (extras.length >= 2) break; // don't drown the news
+    if (extras.length >= 2) break;
   }
   if (extras.length === 0) return summary;
   return `${extras.join(" ")} ${summary}`.replace(/\s+/g, " ").trim();
