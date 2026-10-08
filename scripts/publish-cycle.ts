@@ -105,7 +105,7 @@ async function main(): Promise<void> {
     const fullSummary = await buildFullSummary({
       rssSummary: item.summary,
       articleLink: item.link,
-      maxLen: 420,
+      maxLen: 900,
     });
 
     let title = sanitizePostText(item.title);
@@ -118,10 +118,11 @@ async function main(): Promise<void> {
       summary = await translateToRu(kv, summary);
     }
 
-    summary = shortenSummary(summary, 280);
+    // ~3–4 sentences with who/what/why — still fits Telegram photo caption.
+    summary = shortenSummary(summary, 520);
     title = sanitizePostText(title);
     summary = sanitizePostText(summary);
-    if (title.length < 12 || summary.length < 40) continue;
+    if (title.length < 12 || summary.length < 80) continue;
     // Title must be RU — body-only Cyrillic must not let English headlines through.
     if (!looksRussian(title) || !looksRussian(summary)) continue;
 

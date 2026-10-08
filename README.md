@@ -2,7 +2,7 @@
 
 Free Telegram news publisher for **P News** — US news in Russian via `@PolozNewsbot`.
 
-- Format: photo + `⚡️` headline + 1–2 sentences + `👉 P News. Подписаться`
+- Format: photo + `⚡️` headline + 3–4 sentences of context + comment/reaction CTA + `👉 P News. Подписаться`
 - No external article links, no source line in the caption
 - Dedupe by link / title / similar story
 - History seed keeps existing posts untouched

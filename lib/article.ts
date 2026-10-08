@@ -7,29 +7,33 @@ import {
 const UA = "p-news/1.0 (+poloznewss)";
 
 /**
- * Build a self-contained channel summary from RSS text + clean article meta.
- * Never leaves "Leia mais", site notification CTAs, or scraped UI/CSS junk.
+ * Build a self-contained channel summary from RSS text + article lead.
+ * Prefers enough context (who / what / why), not a one-liner teaser.
  */
 export async function buildFullSummary(input: {
   rssSummary: string;
   articleLink: string;
   maxLen?: number;
 }): Promise<string> {
-  const maxLen = input.maxLen ?? 700;
+  const maxLen = input.maxLen ?? 900;
   let text = stripReadMoreBoilerplate(stripHtml(input.rssSummary));
   if (looksLikeUiJunk(text)) text = "";
 
+  // Always enrich from the page when the RSS blurb is thin on context.
   const needsMore =
-    text.length < 160 ||
+    text.length < 320 ||
+    !hasContextCues(text) ||
     /\bleia\s+mais\b/i.test(input.rssSummary) ||
-    /\bcontinue\s+lendo\b/i.test(input.rssSummary);
+    /\bcontinue\s+lendo\b|\bread\s+more\b/i.test(input.rssSummary);
 
   if (needsMore) {
     const fromPage = await extractArticleText(input.articleLink);
     if (fromPage && !looksLikeUiJunk(fromPage)) {
-      // Prefer page meta/body only when cleaner/longer than RSS.
-      if (fromPage.length > text.length || looksLikeUiJunk(text) || !text) {
+      if (!text) {
         text = fromPage;
+      } else if (fromPage.length > text.length || !hasContextCues(text)) {
+        // Merge unique lead sentences so names/roles from the page stick.
+        text = mergeLeads(text, fromPage);
       }
     }
   }
@@ -45,8 +49,45 @@ export async function buildFullSummary(input: {
     sliced.lastIndexOf("! "),
     sliced.lastIndexOf("? "),
   );
-  if (lastStop > 120) return sliced.slice(0, lastStop + 1).trim();
+  if (lastStop > 160) return sliced.slice(0, lastStop + 1).trim();
   return sliced.trim();
+}
+
+/** Heuristic: text already explains who/what (not just a teaser). */
+function hasContextCues(text: string): boolean {
+  if (text.length < 180) return false;
+  const sentences = (text.match(/[.!?]/g) ?? []).length;
+  if (sentences < 2) return false;
+  // Role / identity cues in EN or RU.
+  return (
+    /\b(who|which|after|charged|sentenced|governor|senator|president|attorney|suspect|inmate|convicted)\b/i.test(
+      text,
+    ) ||
+    /\b(который|которая|после|обвиня|приговор|губернатор|сенатор|президент|адвокат|заключ|осужд)\b/i.test(
+      text,
+    )
+  );
+}
+
+function mergeLeads(a: string, b: string): string {
+  const parts = `${a} ${b}`.replace(/\s+/g, " ").trim();
+  // Deduplicate near-identical opening sentence.
+  const sentences = parts.match(/[^.!?]+[.!?]+|[^.!?]+$/g) ?? [parts];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const s of sentences) {
+    const key = s
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(s.trim());
+    if (out.length >= 6) break;
+  }
+  return out.join(" ");
 }
 
 async function extractArticleText(url: string): Promise<string | null> {
@@ -72,31 +113,45 @@ async function extractArticleText(url: string): Promise<string | null> {
     const charset = normalizeCharset(htmlCs || httpCs || "utf-8");
     const html = decodeBuffer(buf, charset);
 
-    // Prefer clean meta description — avoids nav/notification widgets.
     const og = pickMeta(html, "og:description") ?? pickMeta(html, "description");
     const ogText = og ? stripHtml(og) : "";
-    if (ogText.length >= 80 && !looksLikeUiJunk(ogText)) {
-      return stripReadMoreBoilerplate(ogText);
-    }
 
-    // Fallback: only clean <p> inside article-like containers.
+    // Prefer article <p> leads — meta alone is often too thin for context.
     const articleHtml =
       html.match(/<article[\s\S]*?<\/article>/i)?.[0] ??
       html.match(
-        /<(?:div|section)[^>]*(?:article|content|materia|news-body)[^>]*>[\s\S]*?<\/(?:div|section)>/i,
+        /<(?:div|section)[^>]*(?:article|content|materia|news-body|story-body|article-body)[^>]*>[\s\S]*?<\/(?:div|section)>/i,
       )?.[0] ??
       "";
 
     const scope = articleHtml || html;
     const paragraphs = [...scope.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
       .map((m) => stripHtml(m[1] ?? ""))
-      .filter((p) => p.length > 70)
+      .filter((p) => p.length > 60)
       .filter((p) => !looksLikeUiJunk(p))
-      .filter((p) => !/\bleia\s+mais\b|\bnotifica/i.test(p))
-      .slice(0, 4);
+      .filter(
+        (p) =>
+          !/\bleia\s+mais\b|\bnotifica|\bread\s+more\b|\bsubscribe\b|\bcookie\b|\bnewsletter\b/i.test(
+            p,
+          ),
+      )
+      .slice(0, 6);
 
-    const merged = stripReadMoreBoilerplate(paragraphs.join(" "));
-    if (merged.length >= 80 && !looksLikeUiJunk(merged)) return merged;
+    const fromPars = stripReadMoreBoilerplate(paragraphs.join(" "));
+    if (fromPars.length >= 120 && !looksLikeUiJunk(fromPars)) {
+      if (
+        ogText.length >= 80 &&
+        !looksLikeUiJunk(ogText) &&
+        !fromPars.toLowerCase().includes(ogText.slice(0, 40).toLowerCase())
+      ) {
+        return stripReadMoreBoilerplate(`${ogText} ${fromPars}`);
+      }
+      return fromPars;
+    }
+
+    if (ogText.length >= 80 && !looksLikeUiJunk(ogText)) {
+      return stripReadMoreBoilerplate(ogText);
+    }
     return null;
   } catch {
     return null;
