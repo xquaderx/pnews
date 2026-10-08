@@ -49,28 +49,27 @@ const OUTLET =
 /** Remove photo credits / CMS bylines accidentally scraped into the article body. */
 export function stripImageCredits(text: string): string {
   return text
+    // RU/EN "image source:" blocks ending at Updated/Published timestamps.
     .replace(
-      /источник\s+изображени[яй]\s*:\s*[^.?!]*(?:Published|Updated|Getty|AP Photo|Reuters)[^.?!]*[.?!]?/gi,
+      /источник\s+изображени[яй]\s*:\s*.{0,160}?(?:Updated\s+\d+\s+minutes?\s+ago|Published\s+\d{1,2}\s+[A-Za-z]+\s+\d{4}(?:,\s*\d{1,2}:\d{2}\s*(?:BST|GMT|UTC|ET|PT))?)/gi,
       " ",
     )
     .replace(
-      /(?:image\s+source|photo(?:\s*credit)?|credit)\s*:\s*[^.?!]*(?:Published|Updated|Getty|AP Photo|Reuters|By\s+[A-Z])[^.?!]*[.?!]?/gi,
+      /(?:image\s+source|photo(?:\s*credit)?|credit)\s*:\s*.{0,160}?(?:Updated\s+\d+\s+minutes?\s+ago|Published\s+\d{1,2}\s+[A-Za-z]+\s+\d{4}(?:,\s*\d{1,2}:\d{2}\s*(?:BST|GMT|UTC|ET|PT))?)/gi,
       " ",
     )
-    .replace(
-      /\b(?:Getty\s*Images|AP\s*Photo|AFP|Reuters(?:\s*photo)?)\b(?:\s*\/\s*[^.?!,;]*)?/gi,
-      " ",
-    )
-    .replace(
-      /\bBy\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}(?:\s+and\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})?\b/g,
-      " ",
-    )
+    .replace(/\b(?:Getty\s*Images|AP\s*Photo|AFP)\b/gi, " ")
     .replace(
       /\bPublished\s+\d{1,2}\s+[A-Za-z]+\s+\d{4}(?:,\s*\d{1,2}:\d{2}\s*(?:BST|GMT|UTC|ET|PT))?/gi,
       " ",
     )
     .replace(/\bUpdated\s+\d+\s+minutes?\s+ago\b/gi, " ")
     .replace(/\bUpdated\s+\d{1,2}\s+[A-Za-z]+\s+\d{4}\b/gi, " ")
+    // English CMS byline only when next to photo-credit cues.
+    .replace(
+      /(?:Getty\s*Images|AP\s*Photo|image\s+source|photo\s+credit)\s+By\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}(?:\s+and\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})?/gi,
+      " ",
+    )
     .replace(/\s{2,}/g, " ")
     .trim();
 }
