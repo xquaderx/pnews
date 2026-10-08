@@ -1,48 +1,30 @@
 /**
- * Light background for readers new to US news.
- * Prefer one short natural clause — never a dictionary dump.
+ * Rare background only for truly opaque US terms.
+ * No textbook lines about things already clear from the story
+ * (death penalty, "what is a governor", etc.).
  */
 
 type Primer = { re: RegExp; clause: string };
 
+/** Only acronyms / institutions that a casual RU reader may not know. */
 const PRIMERS: Primer[] = [
   {
-    re: /(tropical storm|hurricane|ураган|тропический шторм)/i,
+    re: /(Guantanamo|Гуантанамо)/i,
     clause:
-      "Ураганы у берегов США несут сильный ветер, ливни и риск наводнений.",
+      "Гуантанамо — военная тюрьма США на Кубе для обвиняемых по делам о терроризме.",
   },
   {
-    re: /(Guantanamo|Гуантанамо|11 сентября)/i,
+    re: /\bFDA\b/,
+    clause: "FDA — американский регулятор лекарств и продуктов.",
+  },
+  {
+    re: /(Federal Reserve|\bФРС\b)/i,
     clause:
-      "Гуантанамо — военная тюрьма США на Кубе, где содержат обвиняемых по делам о терроризме.",
+      "ФРС — центральный банк США; её ставки влияют на кредиты и цены.",
   },
   {
-    re: /(FDA|мифепристон|mifepristone)/i,
-    clause: "FDA — американский регулятор лекарств.",
-  },
-  {
-    re: /(Starlink|SpaceX)/i,
-    clause: "Starlink — спутниковый интернет компании SpaceX Илона Маска.",
-  },
-  {
-    re: /(Federal Reserve|ФРС|ипотек|инфляц|повышен\w+\s+ставк)/i,
-    clause:
-      "ФРС — центральный банк США; её решения по ставкам влияют на кредиты и цены.",
-  },
-  {
-    re: /(Christa Pike|Криста Пайк|смертельн\w+\s+инъекц)/i,
-    clause:
-      "В части штатов США до сих пор есть смертная казнь через смертельную инъекцию.",
-  },
-  {
-    re: /(FBI|ФБР|Mall of America|ИГИЛ)/i,
-    clause:
-      "ФБР — федеральная полиция США; Mall of America — крупный торговый центр в Миннесоте.",
-  },
-  {
-    re: /(midterm|промежуточн\w+\s+выбор)/i,
-    clause:
-      "Промежуточные выборы решают, кто контролирует Конгресс США в середине президентского срока.",
+    re: /\bHHS\b/,
+    clause: "HHS — минздрав США.",
   },
 ];
 
@@ -63,26 +45,26 @@ export function isExplainableBody(title: string, summary: string): boolean {
   const sentences = (s.match(/[.!?…]/g) ?? []).length;
   if (sentences < 2) return false;
   if (sentences < 3 && s.length < 260) return false;
-  return /(это|который|которая|президент|губернатор|сенатор|судья|компани|власт|обвиня|ураган|шторм|суд|Конгресс|Белый дом|тюрм|штат|выбор|казн|ФБР|ФРС|арест|задерж)/i.test(
+  return /(это|который|которая|президент|губернатор|сенатор|судья|компани|власт|обвиня|ураган|шторм|суд|Конгресс|Белый дом|тюрм|штат|выбор|казн|ФБР|ФРС|арест|задерж|адвокат)/i.test(
     s,
   );
 }
 
 /**
- * Add at most one short background sentence, and only if the body
- * does not already explain the concept.
+ * Add at most one short clause, and only for opaque acronyms/places.
+ * Skip when the story already has enough concrete detail.
  */
 export function withOutsiderContext(title: string, summary: string): string {
   const blob = `${title}\n${summary}`;
-  // Already long enough and concrete — don't pad with textbook lines.
-  if (summary.length >= 320 && (summary.match(/[.!?…]/g) ?? []).length >= 3) {
+  // If the news itself is already clear — do not pad.
+  if (summary.length >= 220 && (summary.match(/[.!?…]/g) ?? []).length >= 2) {
     return summary;
   }
   for (const p of PRIMERS) {
     if (!p.re.test(blob)) continue;
-    const marker = p.clause.slice(0, 18).toLowerCase();
+    const marker = p.clause.slice(0, 16).toLowerCase();
     if (summary.toLowerCase().includes(marker)) continue;
-    // Put primer after first sentence when possible — reads more naturally.
+    // Only inject if the acronym/place appears but is not explained nearby.
     const m = summary.match(/^(.+?[.!?…])\s+([\s\S]+)$/);
     if (m) {
       return `${m[1]} ${p.clause} ${m[2]}`.replace(/\s+/g, " ").trim();

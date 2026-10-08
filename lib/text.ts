@@ -120,6 +120,32 @@ export function stripOutletBranding(text: string): string {
     )
     .replace(/\b(смотрите\s+прямую\s+трансляцию\s*:?\s*)/gi, "")
     .replace(/\b(LIVE(?:\s*NOW)?\s*:?\s*)/gi, "")
+    // TV/web reporter teases: "Skyler Henry has more", "У Скайлер Генри есть еще"
+    .replace(
+      /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\s+has\s+more(?:\s+(?:on\s+this|on\s+the\s+story))?\b\.?/gi,
+      " ",
+    )
+    .replace(
+      /\b(?:more\s+from|[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\s+reports?|has\s+the\s+(?:story|latest))\b\.?/gi,
+      " ",
+    )
+    .replace(
+      /у\s+[А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){0,2}\s+есть\s+ещ[её]\.?/gi,
+      " ",
+    )
+    .replace(
+      /(?:подробнее\s+у|ещ[её]\s+у)\s+[А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){0,2}\.?/gi,
+      " ",
+    )
+    // Obvious textbook lines we never want in the channel.
+    .replace(
+      /в\s+части\s+штатов\s+сша\s+до\s+сих\s+пор\s+есть\s+смертная\s+казнь[^.?!]*[.?!]?/gi,
+      " ",
+    )
+    .replace(
+      /в\s+ряде\s+штатов\s+сша\s+до\s+сих\s+пор\s+есть\s+смертная\s+казнь[^.?!]*[.?!]?/gi,
+      " ",
+    )
     // "по словам … BBC, CBS News" / "according to BBC"
     .replace(
       new RegExp(
