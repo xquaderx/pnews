@@ -253,12 +253,19 @@ async function main(): Promise<void> {
       mode: best.mode,
       quote: best.quote,
     });
+    // CTAs are reserved inside buildNewsCaption — never hard-slice them off.
+    if (
+      !caption.includes("Комментируйте") ||
+      !caption.includes("Оставьте реакцию")
+    ) {
+      console.error("caption_missing_ctas", best.item.title);
+    }
 
     const result = await sendTelegramPhoto({
       token,
       chatId,
       photoUrl: best.imageUrl,
-      caption: caption.slice(0, 1024),
+      caption,
     });
     if (!result.ok) {
       failed += 1;

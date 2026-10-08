@@ -114,6 +114,12 @@ export function stripOutletBranding(text: string): string {
       "",
     )
     .replace(/\b(fox\s*news\s+exclusive\s*[:\-–—]\s*)/gi, "")
+    .replace(
+      /^\s*(смотрите\s+прямую\s+трансляцию\s*:?\s*|watch\s+live\s*:?\s*)/gi,
+      "",
+    )
+    .replace(/\b(смотрите\s+прямую\s+трансляцию\s*:?\s*)/gi, "")
+    .replace(/\b(LIVE(?:\s*NOW)?\s*:?\s*)/gi, "")
     // "по словам … BBC, CBS News" / "according to BBC"
     .replace(
       new RegExp(

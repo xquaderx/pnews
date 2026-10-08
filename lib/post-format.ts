@@ -6,9 +6,21 @@ export const CHANNEL_PUBLIC_URL = "https://t.me/PolozNewss";
 export const CHANNEL_CTA_LABEL = "P News. Подписаться";
 export const BRASIL_CHANNEL_URL = "https://t.me/pbrasilagora";
 
-/** Max body length so title + body + source + CTAs fit Telegram photo caption (1024). */
-export const BODY_MAX_LEN = 720;
-export const BODY_MAX_SENTENCES = 6;
+/** Soft target for body; final fit always keeps CTAs inside 1024. */
+export const BODY_MAX_LEN = 650;
+export const BODY_MAX_SENTENCES = 5;
+
+const ENGAGE_LINES = [
+  "💬 Комментируйте ниже, что думаете",
+  "🔥 Оставьте реакцию на пост",
+] as const;
+
+function footerBlock(): string {
+  return [
+    ...ENGAGE_LINES,
+    `👉 <a href="${CHANNEL_PUBLIC_URL}">${escapeHtml(CHANNEL_CTA_LABEL)}</a>`,
+  ].join("\n");
+}
 
 export function buildNewsCaption(input: {
   title: string;
@@ -19,45 +31,70 @@ export function buildNewsCaption(input: {
   quote?: string | null;
 }): string {
   const title = sanitizePostText(input.title);
-  const summary = sanitizePostText(input.summary);
   const mode = input.mode ?? "normal";
-
   const bolt = mode === "important" ? "❗️" : "⚡️";
   const headline = `${bolt} <b>${escapeHtml(title)}</b>`;
+  const footer = footerBlock();
 
-  const parts: string[] = [headline, ""];
+  let summary = sanitizePostText(input.summary);
+  let quote =
+    mode === "important" && input.quote
+      ? sanitizePostText(input.quote)
+      : "";
 
-  // Always include body — flash no longer omits context.
-  if (summary) {
-    parts.push(escapeHtml(summary));
-    parts.push("");
+  // Shrink body until headline + body + quote + footer fit Telegram's 1024 limit.
+  for (let i = 0; i < 8; i++) {
+    const parts = [headline, ""];
+    if (summary) {
+      parts.push(escapeHtml(summary), "");
+    }
+    if (quote) {
+      parts.push(`<blockquote>${escapeHtml(quote)}</blockquote>`, "");
+    }
+    parts.push(footer);
+    const caption = parts.join("\n");
+    if (caption.length <= 1024) return caption;
+
+    const overflow = caption.length - 1024;
+    if (quote.length > 40) {
+      quote = shortenSummary(quote, Math.max(40, quote.length - overflow - 20), 2);
+      continue;
+    }
+    if (summary.length > 80) {
+      summary = shortenSummary(
+        summary,
+        Math.max(80, summary.length - overflow - 20),
+        Math.max(2, BODY_MAX_SENTENCES - i),
+      );
+      continue;
+    }
+    // Last resort: drop quote, keep short body + footer.
+    quote = "";
+    summary = shortenSummary(summary, 80, 2);
   }
 
-  if (mode === "important" && input.quote) {
-    parts.push(`<blockquote>${escapeHtml(input.quote)}</blockquote>`);
-    parts.push("");
-  }
-
-  parts.push(
-    "💬 Комментируйте ниже, что думаете",
-    "🔥 Оставьте реакцию на пост",
-    `👉 <a href="${CHANNEL_PUBLIC_URL}">${escapeHtml(CHANNEL_CTA_LABEL)}</a>`,
-  );
-
-  return parts.join("\n").slice(0, 1024);
+  // Guaranteed footer even if title is huge.
+  const fallback = [headline, "", footer].join("\n");
+  if (fallback.length <= 1024) return fallback;
+  const shortTitle = escapeHtml(title).slice(0, 200);
+  return [`${bolt} <b>${shortTitle}</b>`, "", footer].join("\n").slice(0, 1024);
 }
 
 export function buildDigestCaption(bullets: string[]): string {
   const lines = bullets.map((b) => `• ${escapeHtml(sanitizePostText(b))}`);
-  return [
-    "🗞 <b>P News — главное за ночь</b>",
-    "",
-    ...lines,
-    "",
-    "💬 Комментируйте ниже, что думаете",
-    "🔥 Оставьте реакцию на пост",
-    `👉 <a href="${CHANNEL_PUBLIC_URL}">${escapeHtml(CHANNEL_CTA_LABEL)}</a>`,
-  ].join("\n");
+  const footer = footerBlock();
+  let body = lines.join("\n");
+  let caption = ["🗞 <b>P News — главное за ночь</b>", "", body, "", footer].join(
+    "\n",
+  );
+  while (caption.length > 1024 && lines.length > 3) {
+    lines.pop();
+    body = lines.join("\n");
+    caption = ["🗞 <b>P News — главное за ночь</b>", "", body, "", footer].join(
+      "\n",
+    );
+  }
+  return caption.slice(0, 1024);
 }
 
 export function buildBrasilCrossPromo(): string {
@@ -80,7 +117,7 @@ export function buildPinText(): string {
     "",
     "Формат поста:",
     "⚡️ заголовок",
-    "подробный контекст (5–6 предложений)",
+    "подробный контекст",
     "💬 комментарий · 🔥 реакция",
     "",
     "Пишите в комментариях под постами — обсуждение включено.",
@@ -109,11 +146,11 @@ export function shortenSummary(
     sliced.lastIndexOf("! "),
     sliced.lastIndexOf("? "),
   );
-  if (lastStop > 200) {
+  if (lastStop > 120) {
     return trimToSentences(sliced.slice(0, lastStop + 1).trim(), maxSentences);
   }
   const lastSpace = sliced.lastIndexOf(" ");
-  if (lastSpace > 200) return `${sliced.slice(0, lastSpace).trim()}…`;
+  if (lastSpace > 120) return `${sliced.slice(0, lastSpace).trim()}…`;
   return `${sliced.trim()}…`;
 }
 
