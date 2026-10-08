@@ -227,24 +227,25 @@ export function stripReadMoreBoilerplate(text: string): string {
     .replace(/enable\s+javascript[\s\S]{0,100}?browser\.?/gi, " ")
     .replace(/\bjavascript\b/gi, " ")
     .replace(/\bв\s+браузере\.*/gi, " ")
-    // "Watch: Headline Mash Headline Mash" related-video stacks.
+    // "Watch: …" / "Смотреть: …" related-video stacks — drop through next real stop or EOL.
     .replace(
-      /(?:^|[.!?]\s*)(?:watch|смотреть|смотри|video|видео)\s*:\s*[^.!?]*?(?=(?:[.!?]|$))/gi,
-      ". ",
+      /(?:watch|смотреть|смотри)\s*:\s*[\s\S]{0,280}?(?=(?:[.!?]\s+[A-ZА-ЯЁ]|$))/gi,
+      " ",
     )
     // Related-video headline mash (Pike story and similar CMS blocks).
     .replace(
-      /что\s+мы\s+знаем\s+о\s*«?беспрецедентн[^.]{0,160}/gi,
+      /что\s+мы\s+знаем\s+о\s*«?беспрецедентн[\s\S]{0,200}?(?:казн[аиыу]|пайк)/gi,
       " ",
     )
     .replace(
-      /неудачная\s+казнь\s+приговоренн[^.]{0,120}пайк/gi,
+      /неудачная\s+казнь\s+приговоренн[\s\S]{0,140}?пайк/gi,
       " ",
     )
     .replace(
       /система\s+уголовного\s+правосудия\s+теннесси\s+на\s+неизведанной\s+территории\.?/gi,
       " ",
     )
+    .replace(/\bна\s+неизведанной\s+территории\.?/gi, " ")
     .replace(/\bAP\s+Photo\/[^.]*\.?/gi, "")
     .replace(/\b©\s*[^.]*\.?/g, "")
     .replace(/\b(?:class|aria-[a-z]+|aria|svg|href|src|data-[a-z0-9_-]+|role)=["'][^"']*["']/gi, " ")
