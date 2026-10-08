@@ -136,7 +136,7 @@ export type UsFeed = {
 };
 
 export const US_FEEDS: ReadonlyArray<UsFeed> = [
-  // Politics
+  // Politics / national
   {
     source: "The Hill",
     url: "https://thehill.com/feed/",
@@ -150,10 +150,22 @@ export const US_FEEDS: ReadonlyArray<UsFeed> = [
     kind: "general",
   },
   {
+    source: "NPR National",
+    url: "https://feeds.npr.org/1003/rss.xml",
+    lang: "en",
+    kind: "general",
+  },
+  {
     source: "NYT Politics",
     url: "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml",
     lang: "en",
     kind: "politics",
+  },
+  {
+    source: "NYT US",
+    url: "https://rss.nytimes.com/services/xml/rss/nyt/US.xml",
+    lang: "en",
+    kind: "general",
   },
   {
     source: "CBS Politics",
@@ -162,10 +174,22 @@ export const US_FEEDS: ReadonlyArray<UsFeed> = [
     kind: "politics",
   },
   {
+    source: "CBS US",
+    url: "https://www.cbsnews.com/latest/rss/us",
+    lang: "en",
+    kind: "general",
+  },
+  {
     source: "ABC Politics",
     url: "https://abcnews.go.com/abcnews/politicsheadlines",
     lang: "en",
     kind: "politics",
+  },
+  {
+    source: "ABC US",
+    url: "https://abcnews.go.com/abcnews/usheadlines",
+    lang: "en",
+    kind: "general",
   },
   {
     source: "BBC US & Canada",
@@ -181,10 +205,42 @@ export const US_FEEDS: ReadonlyArray<UsFeed> = [
     requireUs: true,
   },
   {
-    source: "CBS US",
-    url: "https://www.cbsnews.com/latest/rss/us",
+    source: "Guardian US",
+    url: "https://www.theguardian.com/us-news/rss",
     lang: "en",
     kind: "general",
+  },
+  {
+    source: "Guardian US Politics",
+    url: "https://www.theguardian.com/us-news/us-politics/rss",
+    lang: "en",
+    kind: "politics",
+  },
+  {
+    source: "PBS NewsHour",
+    url: "https://www.pbs.org/newshour/feeds/rss/headlines",
+    lang: "en",
+    kind: "general",
+    requireUs: true,
+  },
+  {
+    source: "Bloomberg Politics",
+    url: "https://feeds.bloomberg.com/politics/news.rss",
+    lang: "en",
+    kind: "politics",
+  },
+  {
+    source: "LA Times Politics",
+    url: "https://www.latimes.com/politics/rss2.0.xml",
+    lang: "en",
+    kind: "politics",
+  },
+  {
+    source: "Al Jazeera",
+    url: "https://www.aljazeera.com/xml/rss/all.xml",
+    lang: "en",
+    kind: "politics",
+    requireUs: true,
   },
 
   // Economy
@@ -203,6 +259,20 @@ export const US_FEEDS: ReadonlyArray<UsFeed> = [
     requireUs: true,
   },
   {
+    source: "CNBC Finance",
+    url: "https://www.cnbc.com/id/10000664/device/rss/rss.html",
+    lang: "en",
+    kind: "economy",
+    requireUs: true,
+  },
+  {
+    source: "ABC Money",
+    url: "https://abcnews.go.com/abcnews/moneyheadlines",
+    lang: "en",
+    kind: "economy",
+    requireUs: true,
+  },
+  {
     source: "NPR Business",
     url: "https://feeds.npr.org/1017/rss.xml",
     lang: "en",
@@ -216,10 +286,17 @@ export const US_FEEDS: ReadonlyArray<UsFeed> = [
     requireUs: true,
   },
 
-  // Tech
+  // Tech / science
   {
     source: "NYT Technology",
     url: "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
+    lang: "en",
+    kind: "tech",
+    requireUs: true,
+  },
+  {
+    source: "ABC Technology",
+    url: "https://abcnews.go.com/abcnews/technologyheadlines",
     lang: "en",
     kind: "tech",
     requireUs: true,
@@ -232,13 +309,47 @@ export const US_FEEDS: ReadonlyArray<UsFeed> = [
     requireUs: true,
   },
   {
+    source: "The Verge",
+    url: "https://www.theverge.com/rss/index.xml",
+    lang: "en",
+    kind: "tech",
+    requireUs: true,
+  },
+  {
+    source: "Ars Technica",
+    url: "https://feeds.arstechnica.com/arstechnica/index",
+    lang: "en",
+    kind: "tech",
+    requireUs: true,
+  },
+  {
     source: "NPR Science",
     url: "https://feeds.npr.org/1007/rss.xml",
     lang: "en",
     kind: "tech",
   },
+  {
+    source: "CBS Science",
+    url: "https://www.cbsnews.com/latest/rss/science",
+    lang: "en",
+    kind: "tech",
+  },
+  {
+    source: "BBC Technology",
+    url: "https://feeds.bbci.co.uk/news/technology/rss.xml",
+    lang: "en",
+    kind: "tech",
+    requireUs: true,
+  },
+  {
+    source: "NYT Climate",
+    url: "https://rss.nytimes.com/services/xml/rss/nyt/Climate.xml",
+    lang: "en",
+    kind: "weather",
+    requireUs: true,
+  },
 
-  // Weather / disasters come from general/politics feeds (narrative articles).
+  // Weather / disasters also arrive via national feeds as narrative articles.
   // Raw NHC map/graphic products are rejected in explain.ts — not explainable news.
 ];
 

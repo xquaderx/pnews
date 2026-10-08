@@ -24,7 +24,7 @@ import {
   looksTornText,
   shortenSummary,
 } from "../lib/post-format.js";
-import { isSimilarTitle } from "../lib/posted.js";
+import { collapseSimilarItems, isSimilarTitle } from "../lib/posted.js";
 import { looksBrokenRussian, polishRussian } from "../lib/ru-polish.js";
 import {
   cleanHeadline,
@@ -415,13 +415,14 @@ async function fetchCandidates(): Promise<NewsItem[]> {
     }),
   );
 
-  const maxAgeMs = 1000 * 60 * 60 * 18;
-  return [...byLink.values()]
+  const maxAgeMs = 1000 * 60 * 60 * 24;
+  const fresh = [...byLink.values()]
     .filter((i) => isFreshEnough(i.publishedAt, maxAgeMs))
     .sort(
       (a, b) => publishedSortKey(b.publishedAt) - publishedSortKey(a.publishedAt),
-    )
-    .slice(0, 50);
+    );
+  // One story → one candidate, even if 8 outlets rewrote the same headline.
+  return collapseSimilarItems(fresh).slice(0, 100);
 }
 
 main().catch((err) => {

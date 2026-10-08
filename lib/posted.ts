@@ -97,6 +97,26 @@ const STOP = new Set([
   "were",
   "says",
   "said",
+  "over",
+  "under",
+  "amid",
+  "near",
+  "against",
+  "could",
+  "would",
+  "should",
+  "their",
+  "there",
+  "where",
+  "which",
+  "while",
+  "before",
+  "update",
+  "updates",
+  "live",
+  "breaking",
+  "report",
+  "reports",
   "что",
   "это",
   "как",
@@ -108,6 +128,15 @@ const STOP = new Set([
   "когда",
   "только",
   "также",
+  "будет",
+  "были",
+  "этот",
+  "эта",
+  "эти",
+  "своей",
+  "своего",
+  "обновления",
+  "новости",
 ]);
 
 export function titleTokens(title: string): Set<string> {
@@ -119,7 +148,7 @@ export function titleTokens(title: string): Set<string> {
 }
 
 /** Jaccard / containment — true if looks like the same story. */
-export function isSimilarTitle(a: string, b: string, threshold = 0.5): boolean {
+export function isSimilarTitle(a: string, b: string, threshold = 0.42): boolean {
   const ta = titleTokens(a);
   const tb = titleTokens(b);
   if (ta.size === 0 || tb.size === 0) return false;
@@ -128,8 +157,48 @@ export function isSimilarTitle(a: string, b: string, threshold = 0.5): boolean {
   const union = ta.size + tb.size - inter;
   if (union > 0 && inter / union >= threshold) return true;
   const smaller = Math.min(ta.size, tb.size);
-  if (smaller >= 3 && inter / smaller >= 0.8) return true;
+  // Same proper-noun core across outlets (e.g. Pike / Paxton / Cuellar stories).
+  if (smaller >= 3 && inter / smaller >= 0.72) return true;
+  if (smaller >= 4 && inter >= 3) return true;
+  // Same named subject + same topic, even when outlets rewrite the angle.
+  const longShared = [...ta].filter((t) => tb.has(t) && t.length >= 5);
+  if (longShared.length >= 2) {
+    const topic =
+      /\b(execut|inject|hurricane|storm|indict|impeach|pardon|rally|debate|midterm|казни|инъекц|ураган|шторм|митинг|помилов|сенат|выбор)/i;
+    if (topic.test(a) && topic.test(b)) return true;
+  }
   return false;
+}
+
+/**
+ * Collapse cross-outlet rewrites of the same story inside one fetch.
+ * Keeps the freshest item; prefers already-trusted national desks.
+ */
+export function collapseSimilarItems<T extends { title: string; publishedAt: string | null; source: string }>(
+  items: T[],
+): T[] {
+  const kept: T[] = [];
+  for (const item of items) {
+    const idx = kept.findIndex((k) => isSimilarTitle(k.title, item.title));
+    if (idx < 0) {
+      kept.push(item);
+      continue;
+    }
+    const prev = kept[idx]!;
+    const newer =
+      publishedMs(item.publishedAt) > publishedMs(prev.publishedAt)
+        ? item
+        : prev;
+    // If timestamps tie / close, prefer the one already in kept unless new is clearly newer.
+    kept[idx] = newer === item ? item : prev;
+  }
+  return kept;
+}
+
+function publishedMs(publishedAt: string | null): number {
+  if (!publishedAt) return 0;
+  const ts = Date.parse(publishedAt);
+  return Number.isNaN(ts) ? 0 : ts;
 }
 
 export const RECENT_TITLES_KEY = "posted:recent-titles";
