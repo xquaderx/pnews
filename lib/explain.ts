@@ -66,20 +66,18 @@ export function isThinProductTitle(title: string): boolean {
 export function isExplainableBody(title: string, summary: string): boolean {
   if (isThinProductTitle(title)) return false;
   const s = summary.replace(/\s+/g, " ").trim();
-  if (s.length < 180) return false;
+  if (s.length < 200) return false;
   const sentences = (s.match(/[.!?…]/g) ?? []).length;
   if (sentences < 3) return false;
-  // Need at least one "who/what" cue.
-  if (
-    !/\b(это|который|которая|президент|губернатор|сенатор|судья|компания|власт|обвиня|ураган|шторм|суд|Конгресс|Белый дом)\b/i.test(
+  // Cyrillic-friendly cues (avoid JS \b, which breaks on Russian letters).
+  const hasWhoWhat =
+    /(это|который|которая|президент|губернатор|сенатор|судья|компани|власт|обвиня|ураган|шторм|суд|Конгресс|Белый дом|тюрм|штат|выбор)/i.test(
       s,
-    ) &&
-    !/\b(president|governor|senator|judge|company|charged|hurricane|storm|court|Congress)\b/i.test(
+    ) ||
+    /\b(president|governor|senator|judge|company|charged|hurricane|storm|court|Congress|prison|state)\b/i.test(
       s,
-    )
-  ) {
-    return false;
-  }
+    );
+  if (!hasWhoWhat) return false;
   return true;
 }
 
