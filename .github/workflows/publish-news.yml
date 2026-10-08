@@ -30,7 +30,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data
-          key: posted-kv-poloz-v1
+          # Unique key each run → always save; restore-keys pulls newest prior cache.
+          key: posted-kv-poloz-${{ github.run_id }}
           restore-keys: |
             posted-kv-poloz-
 
@@ -44,10 +45,3 @@ jobs:
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           MAX_POSTS_PER_CYCLE: "2"
         run: npm run publish:once
-
-      - name: Persist dedupe state
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: data
-          key: posted-kv-poloz-v1-${{ github.run_id }}
