@@ -14,10 +14,13 @@ export function buildNewsCaption(input: {
 
   const headline = `⚡️ <b>${escapeHtml(title)}</b>`;
   const body = escapeHtml(summary);
+  const engage =
+    "💬 Комментируйте ниже, что думаете\n" +
+    "🔥 Оставьте реакцию на пост";
   const cta =
     `👉 <a href="${CHANNEL_PUBLIC_URL}">${escapeHtml(CHANNEL_CTA_LABEL)}</a>`;
 
-  return [headline, "", body, "", cta].join("\n");
+  return [headline, "", body, "", engage, cta].join("\n");
 }
 
 /** Keep body to ~1–2 sentences, cut on sentence boundary. */
