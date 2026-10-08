@@ -122,7 +122,8 @@ async function main(): Promise<void> {
     title = sanitizePostText(title);
     summary = sanitizePostText(summary);
     if (title.length < 12 || summary.length < 40) continue;
-    if (!looksRussian(`${title}\n${summary}`)) continue;
+    // Title must be RU — body-only Cyrillic must not let English headlines through.
+    if (!looksRussian(title) || !looksRussian(summary)) continue;
 
     candidates.push({
       item: { ...item, title, summary },
