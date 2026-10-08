@@ -169,10 +169,22 @@ export function stripOutletBranding(text: string): string {
       new RegExp(`\\((?:${outlet})\\)\\s*$`, "gi"),
       "",
     )
+    // Trailing outlet tags in titles: "- AP", "— Reuters", "/ BBC"
     .replace(
-      new RegExp(`\\s*[-–—]\\s*(?:${outlet})\\s*$`, "gi"),
+      new RegExp(
+        `\\s*[-–—|/]\\s*(?:${outlet}|associated\\s+press|ассошиэйтед\\s+пресс)\\s*$`,
+        "gi",
+      ),
       "",
     )
+    .replace(
+      new RegExp(
+        `\\s*[-–—]\\s*<a[^>]*>\\s*(?:${outlet})\\s*</a>\\s*$`,
+        "gi",
+      ),
+      "",
+    )
+    .replace(/\s+[-–—]\s*AP\s*$/gi, "")
     .replace(/\s{2,}/g, " ")
     .replace(/^\s*[:\-–—]\s*/, "")
     .replace(/\s+([,.!?;:])/g, "$1")

@@ -250,15 +250,20 @@ async function main(): Promise<void> {
       title: best.item.title,
       summary: best.summary,
       source: best.item.source,
+      kind: best.item.kind,
       mode: best.mode,
       quote: best.quote,
     });
-    // CTAs are reserved inside buildNewsCaption — never hard-slice them off.
+    // Footer + pins are reserved inside buildNewsCaption — never hard-slice them off.
     if (
-      !caption.includes("Комментируйте") ||
-      !caption.includes("Оставьте реакцию")
+      !caption.includes("📍") ||
+      !caption.includes("Подписывайся") ||
+      !caption.includes("PolozNewss")
     ) {
-      console.error("caption_missing_ctas", best.item.title);
+      console.error("caption_missing_format", best.item.title);
+    }
+    if (/\bAP\b|Reuters|Associated Press/i.test(caption.replace(/<[^>]+>/g, ""))) {
+      console.error("caption_leaked_outlet", best.item.title);
     }
 
     const result = await sendTelegramPhoto({
