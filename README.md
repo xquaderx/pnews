@@ -5,11 +5,10 @@ Free Telegram news publisher for **P News** — US news in Russian via `@PolozNe
 ## Format
 
 - Photo + `⚡️` / `❗️` headline
-- 3–4 sentences of context (who / what / why), or flash headline-only
-- Source line: `— The Hill`
+- Detailed context for readers new to US news
 - `💬` comment + `🔥` reaction CTAs
 - `👉 P News. Подписаться`
-- No external article links
+- No external article links, no outlet name in the caption
 
 ## Features
 

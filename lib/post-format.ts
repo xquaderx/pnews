@@ -13,13 +13,13 @@ export const BODY_MAX_SENTENCES = 6;
 export function buildNewsCaption(input: {
   title: string;
   summary: string;
+  /** Kept for callers; not shown in the channel caption. */
   source?: string;
   mode?: PostMode;
   quote?: string | null;
 }): string {
   const title = sanitizePostText(input.title);
   const summary = sanitizePostText(input.summary);
-  const source = input.source ? sanitizePostText(input.source) : undefined;
   const mode = input.mode ?? "normal";
 
   const bolt = mode === "important" ? "❗️" : "⚡️";
@@ -35,11 +35,6 @@ export function buildNewsCaption(input: {
 
   if (mode === "important" && input.quote) {
     parts.push(`<blockquote>${escapeHtml(input.quote)}</blockquote>`);
-    parts.push("");
-  }
-
-  if (source) {
-    parts.push(`— ${escapeHtml(source)}`);
     parts.push("");
   }
 
@@ -86,7 +81,6 @@ export function buildPinText(): string {
     "Формат поста:",
     "⚡️ заголовок",
     "подробный контекст (5–6 предложений)",
-    "— источник",
     "💬 комментарий · 🔥 реакция",
     "",
     "Пишите в комментариях под постами — обсуждение включено.",
