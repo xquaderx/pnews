@@ -137,13 +137,17 @@ export function stripOutletBranding(text: string): string {
       /(?:подробнее\s+у|ещ[её]\s+у)\s+[А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){0,2}\.?/gi,
       " ",
     )
-    // Obvious textbook lines we never want in the channel.
+    // Obvious textbook lines — clear from any death-penalty story.
     .replace(
-      /в\s+части\s+штатов\s+сша\s+до\s+сих\s+пор\s+есть\s+смертная\s+казнь[^.?!]*[.?!]?/gi,
+      /в\s+(?:части|ряде|некоторых|отдельных)\s+штатов\s+сша\s+до\s+сих\s+пор\s+есть\s+смертная\s+казнь[^.!?\n]*[.!?]?/gi,
       " ",
     )
     .replace(
-      /в\s+ряде\s+штатов\s+сша\s+до\s+сих\s+пор\s+есть\s+смертная\s+казнь[^.?!]*[.?!]?/gi,
+      /до\s+сих\s+пор\s+есть\s+смертная\s+казнь(?:\s+через\s+смертельную\s+инъекцию)?[^.!?\n]*[.!?]?/gi,
+      " ",
+    )
+    .replace(
+      /обычно\s+делают\s+смертельную\s+инъекцию[^.!?\n]*[.!?]?/gi,
       " ",
     )
     // "по словам … BBC, CBS News" / "according to BBC"
