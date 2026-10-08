@@ -28,10 +28,12 @@ export async function translateToRu(
     await sleep(350);
   }
   const result = out.join(" ").replace(/\s+/g, " ").trim();
-  if (result && result !== cleaned) {
-    await kv.put(key, result);
+  // Reject "translations" that stayed English (quota / passthrough).
+  if (!result || !looksMostlyCyrillic(result)) {
+    return cleaned;
   }
-  return result || cleaned;
+  await kv.put(key, result);
+  return result;
 }
 
 function looksMostlyCyrillic(text: string): boolean {
