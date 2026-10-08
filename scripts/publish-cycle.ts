@@ -257,8 +257,9 @@ async function main(): Promise<void> {
     // Footer + pins are reserved inside buildNewsCaption — never hard-slice them off.
     if (
       !caption.includes("📍") ||
-      !caption.includes("Подписывайся") ||
-      !caption.includes("PolozNewss")
+      !caption.includes("Комментируйте") ||
+      !caption.includes("Оставьте реакцию") ||
+      !caption.includes("P News. Подписаться")
     ) {
       console.error("caption_missing_format", best.item.title);
     }

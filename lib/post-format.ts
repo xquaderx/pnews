@@ -13,12 +13,15 @@ export const BODY_MAX_LEN = 720;
 export const BODY_MAX_SENTENCES = 6;
 export const MAX_PIN_PARAGRAPHS = 5;
 
-const SUBSCRIBE_LINE = "Больше новостей США здесь. Подписывайся! 👇";
+const ENGAGE_LINES = [
+  "💬 Комментируйте ниже, что думаете",
+  "🔥 Оставьте реакцию на пост",
+] as const;
 
 function footerBlock(): string {
   return [
-    `<b>${escapeHtml(SUBSCRIBE_LINE)}</b>`,
-    `<a href="${CHANNEL_PUBLIC_URL}">${escapeHtml(CHANNEL_HANDLE)}</a>`,
+    ...ENGAGE_LINES,
+    `👉 <a href="${CHANNEL_PUBLIC_URL}">${escapeHtml(CHANNEL_CTA_LABEL)}</a>`,
   ].join("\n");
 }
 
@@ -238,8 +241,7 @@ export function buildBrasilCrossPromo(): string {
     "",
     `👉 <a href="${BRASIL_CHANNEL_URL}">P Brasil Agora. Inscrever-se</a>`,
     "",
-    `<b>${escapeHtml(SUBSCRIBE_LINE)}</b>`,
-    `<a href="${CHANNEL_PUBLIC_URL}">${escapeHtml(CHANNEL_HANDLE)}</a>`,
+    footerBlock(),
   ].join("\n");
 }
 
