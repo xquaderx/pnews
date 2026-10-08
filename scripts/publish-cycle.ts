@@ -20,13 +20,17 @@ import {
   BODY_MAX_SENTENCES,
   buildBrasilCrossPromo,
   buildNewsCaption,
+  dropTornFragments,
+  looksTornText,
   shortenSummary,
 } from "../lib/post-format.js";
 import { isSimilarTitle } from "../lib/posted.js";
 import { looksBrokenRussian, polishRussian } from "../lib/ru-polish.js";
 import {
+  cleanHeadline,
   detectPostMode,
   extractQuote,
+  isLiveBlogOrRoundupTitle,
   isNationalEnough,
 } from "../lib/select.js";
 import { looksLikeUiJunk, sanitizePostText } from "../lib/text.js";
@@ -151,14 +155,28 @@ async function main(): Promise<void> {
       summary = await translateToRu(kv, summary);
     }
 
-    title = polishRussian(sanitizePostText(title));
+    title = polishRussian(sanitizePostText(cleanHeadline(title)));
     summary = polishRussian(sanitizePostText(summary));
+    if (isLiveBlogOrRoundupTitle(title) || isLiveBlogOrRoundupTitle(originalTitle)) {
+      console.log(
+        JSON.stringify({
+          skipped: true,
+          reason: "live_blog_roundup",
+          title,
+        }),
+      );
+      continue;
+    }
     // One short background clause max — no dictionary dumps.
     summary = withOutsiderContext(title, summary);
     summary = polishRussian(
-      sanitizePostText(shortenSummary(summary, BODY_MAX_LEN, BODY_MAX_SENTENCES)),
+      dropTornFragments(
+        sanitizePostText(
+          shortenSummary(summary, BODY_MAX_LEN, BODY_MAX_SENTENCES),
+        ),
+      ),
     );
-    title = polishRussian(title);
+    title = polishRussian(cleanHeadline(title));
 
     if (title.length < 12) continue;
     if (!looksRussian(title) || !looksRussian(summary)) continue;
@@ -167,6 +185,16 @@ async function main(): Promise<void> {
         JSON.stringify({
           skipped: true,
           reason: "broken_russian",
+          title,
+        }),
+      );
+      continue;
+    }
+    if (looksTornText(summary)) {
+      console.log(
+        JSON.stringify({
+          skipped: true,
+          reason: "torn_summary",
           title,
         }),
       );

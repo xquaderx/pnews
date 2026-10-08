@@ -41,6 +41,13 @@ export async function buildFullSummary(input: {
   text = stripReadMoreBoilerplate(text);
   if (looksLikeUiJunk(text)) return "";
 
+  // Strip CMS ellipsis teasers before length trim.
+  text = text
+    .replace(/\.\.\./g, ".")
+    .replace(/…/g, ".")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
   if (text.length <= maxLen) return text;
 
   const sliced = text.slice(0, maxLen);
@@ -49,8 +56,16 @@ export async function buildFullSummary(input: {
     sliced.lastIndexOf("! "),
     sliced.lastIndexOf("? "),
   );
+  // Only return complete sentences — never a mid-thought stump.
   if (lastStop > 160) return sliced.slice(0, lastStop + 1).trim();
-  return sliced.trim();
+  const earlier = text.slice(0, Math.min(maxLen, text.length));
+  const stop = Math.max(
+    earlier.lastIndexOf(". "),
+    earlier.lastIndexOf("! "),
+    earlier.lastIndexOf("? "),
+  );
+  if (stop > 80) return earlier.slice(0, stop + 1).trim();
+  return "";
 }
 
 /** Heuristic: text already explains who/what (not just a teaser). */

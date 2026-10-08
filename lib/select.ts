@@ -2,6 +2,45 @@
 
 export type PostMode = "flash" | "normal" | "important";
 
+/**
+ * Live blogs / multi-topic "Updates:" roundups — skip.
+ * They produce vague titles and torn mid-sentence bodies.
+ */
+export function isLiveBlogOrRoundupTitle(title: string): boolean {
+  const t = title.trim();
+  if (
+    /^(updates?|live\s*updates?|обновлени[яе]|смотрите\s+прямую|watch\s+live)\b/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  // "Updates: A; B, C in focus" mashups
+  if (
+    /обновлен|updates?/i.test(t) &&
+    (t.includes(";") || /,.*,/.test(t))
+  ) {
+    return true;
+  }
+  // Two topics glued with ";" — almost always a live-blog roundup.
+  if (t.includes(";") && t.split(";").filter((p) => p.trim().length > 8).length >= 2) {
+    return true;
+  }
+  if (/в центре внимания дебат/i.test(t)) return true;
+  return false;
+}
+
+/** Soft-clean leftover live-blog prefixes if a title slipped through. */
+export function cleanHeadline(title: string): string {
+  return title
+    .replace(
+      /^(updates?|live\s*updates?|обновлени[яе])\s*[:\-–—]\s*/i,
+      "",
+    )
+    .replace(/^(смотрите\s+прямую\s+трансляцию|watch\s+live)\s*:?\s*/i, "")
+    .trim();
+}
+
 const NATIONAL_FIGURES =
   /\b(Trump|Biden|Harris|Vance|Obama|Newsom|Musk|RFK|Congress|Senate|White House|Supreme Court|FBI|CIA|Pentagon|FDA|HHS|Fed|Federal Reserve|SpaceX|Nvidia|Apple|Tesla|Hurricane|Wildfire)\b/i;
 

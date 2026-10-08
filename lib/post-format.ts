@@ -1,7 +1,7 @@
 import { escapeHtml } from "./telegram.js";
 import { sanitizePostText } from "./text.js";
 import type { FeedKind } from "./rss.js";
-import type { PostMode } from "./select.js";
+import { cleanHeadline, type PostMode } from "./select.js";
 
 export const CHANNEL_PUBLIC_URL = "https://t.me/PolozNewss";
 export const CHANNEL_HANDLE = "@PolozNewss";
@@ -74,9 +74,9 @@ export function toPinParagraphs(
   text: string,
   maxPins = MAX_PIN_PARAGRAPHS,
 ): string[] {
-  const clean = sanitizePostText(text).replace(/\s+/g, " ").trim();
+  const clean = dropTornFragments(text);
   if (!clean) return [];
-  const sentences = clean.match(/[^.!?…]+[.!?…]+|[^.!?…]+$/g) ?? [clean];
+  const sentences = clean.match(/[^.!?]+[.!?]+/g) ?? [];
   const pins: string[] = [];
   let buf = "";
   for (const raw of sentences) {
@@ -99,7 +99,8 @@ export function toPinParagraphs(
     }
   }
   if (buf && pins.length < maxPins) pins.push(buf);
-  return pins.slice(0, maxPins);
+  // Drop any pin that somehow still looks torn.
+  return pins.filter((p) => !looksTornText(p)).slice(0, maxPins);
 }
 
 function removeQuoteFromBody(body: string, quote: string): string {
@@ -261,15 +262,60 @@ export function buildPinText(): string {
   ].join("\n");
 }
 
+/** Drop CMS teasers and mid-thought fragments ("кандидат в Сенат..."). */
+export function dropTornFragments(text: string): string {
+  const clean = sanitizePostText(text).replace(/\s+/g, " ").trim();
+  if (!clean) return "";
+  const parts = clean.match(/[^.!?…]+[.!?…]+|[^.!?…]+$/g) ?? [clean];
+  const kept: string[] = [];
+  for (const raw of parts) {
+    let s = raw.trim();
+    if (!s) continue;
+    // Ellipsis / "read more" teaser — never ship.
+    if (/\.\.\.|…/.test(s)) continue;
+    // Must end with real sentence punctuation.
+    if (!/[.!?]$/.test(s)) continue;
+    // Dangling "who?" stubs.
+    if (
+      /\b(кандидат(?:а|у|ом)?\s+в\s+Сенат|кандидат(?:а|у|ом)?\s+в\s+губернаторы)\s*[.!?]?$/i.test(
+        s,
+      )
+    ) {
+      continue;
+    }
+    if (/\b(сказал(?:а|и)?|говорит),?\s+что\s+(?:он|она|они)\s*[.!?]?$/i.test(s)) {
+      continue;
+    }
+    kept.push(s);
+  }
+  return kept.join(" ").replace(/\s{2,}/g, " ").trim();
+}
+
+/** True when body still looks cut mid-thought after cleanup. */
+export function looksTornText(text: string): boolean {
+  const t = text.trim();
+  if (!t) return true;
+  if (/\.\.\.|…/.test(t)) return true;
+  if (!/[.!?]$/.test(t)) return true;
+  if (
+    /\b(кандидат(?:а|у|ом)?\s+в\s+Сенат|сказал(?:а|и)?,?\s+что\s+(?:он|она))\s*$/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /**
- * Keep a clear explainer body: several sentences, cut on boundaries.
+ * Keep a clear explainer body: only complete sentences, never "…".
  */
 export function shortenSummary(
   text: string,
   maxLen = BODY_MAX_LEN,
   maxSentences = BODY_MAX_SENTENCES,
 ): string {
-  const clean = sanitizePostText(text).replace(/\s+/g, " ").trim();
+  const clean = dropTornFragments(text);
   if (!clean) return "";
   if (clean.length <= maxLen) {
     return trimToSentences(clean, maxSentences);
@@ -283,12 +329,14 @@ export function shortenSummary(
   if (lastStop > 120) {
     return trimToSentences(sliced.slice(0, lastStop + 1).trim(), maxSentences);
   }
-  const lastSpace = sliced.lastIndexOf(" ");
-  if (lastSpace > 120) return `${sliced.slice(0, lastSpace).trim()}…`;
-  return `${sliced.trim()}…`;
+  // Prefer fewer full sentences over a torn tail — never append "…".
+  const shorter = trimToSentences(clean, Math.max(1, maxSentences - 1));
+  if (shorter.length <= maxLen && shorter.length > 80) return shorter;
+  return trimToSentences(clean, 2);
 }
 
 function trimToSentences(text: string, maxSentences: number): string {
-  const parts = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) ?? [text];
+  const parts = dropTornFragments(text).match(/[^.!?]+[.!?]+/g) ?? [];
+  if (parts.length === 0) return "";
   return parts.slice(0, maxSentences).join(" ").trim();
 }
