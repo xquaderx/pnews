@@ -34,9 +34,20 @@ jobs:
           restore-keys: |
             posted-kv-poloz-
 
+      - name: Seed history from public channel
+        # Marks existing @PolozNewss headlines so Actions never re-posts old news.
+        run: npm run seed:history
+
       - name: Publish newest news
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           MAX_POSTS_PER_CYCLE: "2"
         run: npm run publish:once
+
+      - name: Persist dedupe state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: posted-kv-poloz-v1-${{ github.run_id }}
