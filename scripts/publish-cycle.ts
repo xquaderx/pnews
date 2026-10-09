@@ -77,6 +77,14 @@ loadEnvFile(resolve(".env"));
 
 const CROSS_PROMO_KEY = "meta:brasil-cross-promo";
 const CROSS_PROMO_EVERY_MS = 1000 * 60 * 60 * 48;
+/** Pace ledger: caps daily volume so the channel does not flood. */
+const PACE_KEY = "meta:publish-pace";
+
+type PaceState = {
+  day: string; // YYYY-MM-DD UTC
+  count: number;
+  lastPostedAt?: string;
+};
 
 async function main(): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
@@ -86,6 +94,41 @@ async function main(): Promise<void> {
   }
 
   const kv = createFileKv(resolve("data/posted-kv.json"));
+  const pace = await readPace(kv);
+  const maxPerDay = Math.max(1, Number(process.env.MAX_POSTS_PER_DAY ?? "8"));
+  const minGapMin = Math.max(
+    30,
+    Number(process.env.MIN_MINUTES_BETWEEN_POSTS ?? "90"),
+  );
+
+  if (pace.count >= maxPerDay) {
+    console.log(
+      JSON.stringify({
+        posted: false,
+        reason: "daily_cap",
+        day: pace.day,
+        count: pace.count,
+        maxPerDay,
+      }),
+    );
+    return;
+  }
+  if (pace.lastPostedAt) {
+    const gapMs = Date.now() - Date.parse(pace.lastPostedAt);
+    const needMs = minGapMin * 60_000;
+    if (Number.isFinite(gapMs) && gapMs < needMs) {
+      console.log(
+        JSON.stringify({
+          posted: false,
+          reason: "min_gap",
+          waitMinutes: Math.ceil((needMs - gapMs) / 60_000),
+          minGapMin,
+        }),
+      );
+      return;
+    }
+  }
+
   await maybeCrossPromo(kv, token, chatId);
 
   const items = await fetchCandidates();
@@ -236,13 +279,15 @@ async function main(): Promise<void> {
     return b.score - a.score;
   });
 
-  const maxPerCycle = Number(process.env.MAX_POSTS_PER_CYCLE ?? "2");
+  // Default 1: research + reader feedback — avoid bursts.
+  const maxPerCycle = Math.max(1, Number(process.env.MAX_POSTS_PER_CYCLE ?? "1"));
+  const roomToday = Math.max(0, maxPerDay - pace.count);
   let posted = 0;
   let failed = 0;
   const usedKinds = new Set<string>();
 
   for (const best of candidates) {
-    if (posted >= Math.max(1, maxPerCycle)) break;
+    if (posted >= Math.min(maxPerCycle, roomToday)) break;
 
     // Soft diversity: if we already posted politics, prefer another kind once.
     if (
@@ -327,6 +372,7 @@ async function main(): Promise<void> {
     }
     posted += 1;
     usedKinds.add(best.item.kind);
+    await bumpPace(kv, pace);
 
     console.log(
       JSON.stringify({
@@ -338,6 +384,8 @@ async function main(): Promise<void> {
         mode: best.mode,
         score: best.score,
         publishedAt: best.item.publishedAt,
+        dayCount: pace.count,
+        maxPerDay,
       }),
     );
   }
@@ -360,6 +408,28 @@ async function main(): Promise<void> {
 function kindBonus(kind: NewsItem["kind"]): number {
   if (kind === "economy" || kind === "tech" || kind === "weather") return 5;
   return 0;
+}
+
+async function readPace(kv: ReturnType<typeof createFileKv>): Promise<PaceState> {
+  const day = new Date().toISOString().slice(0, 10);
+  const prev = (await kv.get(PACE_KEY)) as PaceState | undefined;
+  if (!prev || prev.day !== day) {
+    return { day, count: 0 };
+  }
+  return {
+    day,
+    count: Number(prev.count) || 0,
+    lastPostedAt: prev.lastPostedAt,
+  };
+}
+
+async function bumpPace(
+  kv: ReturnType<typeof createFileKv>,
+  pace: PaceState,
+): Promise<void> {
+  pace.count += 1;
+  pace.lastPostedAt = new Date().toISOString();
+  await kv.put(PACE_KEY, pace);
 }
 
 async function maybeCrossPromo(

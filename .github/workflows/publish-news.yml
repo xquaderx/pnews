@@ -1,10 +1,12 @@
-# Near-realtime free publisher for @PolozNewss (no Cursor model).
+# Paced publisher for @PolozNewss (no Cursor model).
+# Target ~8 posts/day in active hours, ≥90 min apart (see MAX_* env).
 # Repo secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
 name: publish-news
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    # 8 slots/day UTC ≈ 09:00–23:00 MSK — matches small news-channel cadence.
+    - cron: "0 6,8,10,12,14,16,18,20 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -47,5 +49,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-          MAX_POSTS_PER_CYCLE: "3"
+          MAX_POSTS_PER_CYCLE: "1"
+          MAX_POSTS_PER_DAY: "8"
+          MIN_MINUTES_BETWEEN_POSTS: "90"
         run: npm run publish:once
