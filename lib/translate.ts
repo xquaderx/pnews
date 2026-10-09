@@ -6,6 +6,24 @@ function cacheKey(text: string): string {
   return `tr:en-ru:${hash}`;
 }
 
+/** Keep ICE (immigration agency) from becoming «лёд» in MT. */
+function protectIceAgency(text: string): string {
+  return text
+    .replace(/\bICE\s+agents?\b/gi, "XXICEAGENTXX")
+    .replace(/\bICE\s+officers?\b/gi, "XXICEOFFICERXX")
+    .replace(/\bICE\b/g, "XXICEAGENCYXX");
+}
+
+function restoreIceAgency(text: string): string {
+  return text
+    .replace(/XX\s*ICE\s*AGENT(?:S)?\s*XX/gi, "ICE агент")
+    .replace(/XXICEAGENT(?:S|XX)?/gi, "ICE агент")
+    .replace(/XX\s*ICE\s*OFFICER(?:S)?\s*XX/gi, "ICE офицер")
+    .replace(/XXICEOFFICER(?:S|XX)?/gi, "ICE офицер")
+    .replace(/XX\s*ICE\s*AGENCY\s*XX/gi, "ICE")
+    .replace(/XXICEAGENCYXX/gi, "ICE");
+}
+
 /** Free EN→RU via MyMemory; cached in file kv. Falls back to original on failure. */
 export async function translateToRu(
   kv: SimpleKv,
@@ -13,24 +31,27 @@ export async function translateToRu(
 ): Promise<string> {
   const cleaned = text.replace(/\s+/g, " ").trim();
   if (!cleaned) return "";
-  if (looksMostlyCyrillic(cleaned)) return cleaned;
+  if (looksMostlyCyrillic(cleaned)) return restoreIceAgency(cleaned);
 
-  const key = cacheKey(cleaned);
+  const protectedText = protectIceAgency(cleaned);
+  const key = cacheKey(protectedText);
   const cached = await kv.get(key);
-  if (typeof cached === "string" && cached.length > 0) return cached;
+  if (typeof cached === "string" && cached.length > 0) {
+    return restoreIceAgency(cached);
+  }
 
   // MyMemory free tier ~500 bytes/query; chunk long text.
-  const chunks = chunkText(cleaned, 420);
+  const chunks = chunkText(protectedText, 420);
   const out: string[] = [];
   for (const chunk of chunks) {
     const translated = await mymemory(chunk);
     out.push(translated ?? chunk);
     await sleep(350);
   }
-  const result = out.join(" ").replace(/\s+/g, " ").trim();
+  const result = restoreIceAgency(out.join(" ").replace(/\s+/g, " ").trim());
   // Reject "translations" that stayed English (quota / passthrough).
   if (!result || !looksMostlyCyrillic(result)) {
-    return cleaned;
+    return restoreIceAgency(cleaned);
   }
   await kv.put(key, result);
   return result;

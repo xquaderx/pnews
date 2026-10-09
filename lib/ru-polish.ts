@@ -29,9 +29,29 @@ const NAME_MAP: Array<[RegExp, string]> = [
   [/\bTwin Cities\b/gi, "Миннеаполиса и Сент-Пола"],
   [/\bISIS\b/g, "ИГИЛ"],
   [/\bISIL\b/g, "ИГИЛ"],
+  // Immigration and Customs Enforcement — never «лёд».
+  [/\bICE\s+agents?\b/gi, "ICE агент"],
+  [/\bICE\s+officers?\b/gi, "ICE офицер"],
+  [/\bICE\b/g, "ICE"],
+  [/\bZohran\s+Mamdani\b/gi, "Зохран Мамдани"],
+  [/\bMamdani\b/g, "Мамдани"],
 ];
 
 const PHRASE_FIXES: Array<[RegExp, string]> = [
+  // ICE mistranslated as weather ice / «ледяной».
+  [/ледяной\s+агент(?:ы|ов|а|ом|ами)?/gi, "ICE агент"],
+  [/ледяные\s+агент(?:ы|ов)?/gi, "ICE агенты"],
+  [/агент(?:ы|ов|ами|а|у|ом)?\s+(?:льда|льду|льдом)/gi, "ICE агент"],
+  [/сотрудник(?:и|ов|ами|а|у)?\s+(?:льда|льду|льдом)/gi, "сотрудник ICE"],
+  [/застреленн\w*\s+льдом/gi, "застреленный ICE"],
+  [/стреля(?:ет|л|ли)\s+льдом/gi, "стреляет ICE"],
+  [/\bльдом\b(?=\s+(?:в\s+Нью|в\s+Чикаго|в\s+Лос|агент|сотрудник|,|\.|$))/gi, "ICE"],
+  [/\bЛЬДОМ\b/g, "ICE"],
+  [/\bЛЕДЯНОЙ\b/g, "ICE"],
+  [/\bльда\b(?=\s+(?:в\s+Нью|агент|,|\.|$))/gi, "ICE"],
+  [/XXICEAGENT(?:S|XX)?/gi, "ICE агент"],
+  [/XXICEOFFICER(?:S|XX)?/gi, "ICE офицер"],
+  [/XXICEAGENCYXX/gi, "ICE"],
   // Broken MT titles / verbs — before name rewrites.
   [/мужчина посмотрел на .+? за нападение и поклялся в верности ИГИЛ(?:,?\s*сообщает ФБР)?/gi,
     "ФБР: в Миннесоте задержали парня, который готовил нападение на Mall of America и присягнул ИГИЛ"],
@@ -120,6 +140,7 @@ export function looksBrokenRussian(text: string): boolean {
     return true;
   }
   if (/смотреть\s*:\s*что\s+мы\s+знаем/i.test(text)) return true;
+  if (/ледяной\s+агент|застреленн\w*\s+льдом|\bЛЬДОМ\b/i.test(text)) return true;
   // Too much leftover English in a "Russian" post.
   const cyr = (text.match(/[А-Яа-яЁё]/g) ?? []).length;
   const lat = (text.match(/[A-Za-z]/g) ?? []).length;
