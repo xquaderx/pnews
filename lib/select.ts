@@ -104,12 +104,12 @@ export function detectPostMode(input: {
   summary: string;
 }): PostMode {
   const blob = `${input.title}\n${input.summary}`;
-  // Never use "flash" (headline-only) — readers need full context.
+  // Breaking / urgent — may publish outside the daily pace cap.
   if (
-    /\b(impeach|assassin|nuclear|invasion|declare(?:s|d)? war|mass shooting|supreme court rules|emergency)\b/i.test(
+    /\b(impeach|assassin(?:ation)?|nuclear|invasion|declare(?:s|d)?\s+war|mass\s+shooting|supreme\s+court\s+rules|national\s+emergency|state\s+of\s+emergency|hostage|terror(?:ist|ism)?\s+attack|bomb(?:ing)?|explosion|plane\s+crash|shot\s+(?:and\s+)?kill(?:ed)?|fatally\s+shot|breaking\b|just\s+in\b)\b/i.test(
       blob,
     ) ||
-    /\b(импичмент|ядерн|объявил войну|массовое убийство|чрезвычайн)\b/i.test(
+    /\b(импичмент|ядерн|объявил войну|массовое убийство|чрезвычайн|теракт|взрыв|захват залож|застрел|убит[аы]? |авиакатастроф|срочн)\b/i.test(
       blob,
     )
   ) {

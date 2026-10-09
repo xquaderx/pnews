@@ -82,7 +82,10 @@ const PACE_KEY = "meta:publish-pace";
 
 type PaceState = {
   day: string; // YYYY-MM-DD UTC
+  /** Regular posts that count toward the daily comfort cap. */
   count: number;
+  /** Urgent posts that may exceed the regular cap. */
+  urgentCount: number;
   lastPostedAt?: string;
 };
 
@@ -95,38 +98,43 @@ async function main(): Promise<void> {
 
   const kv = createFileKv(resolve("data/posted-kv.json"));
   const pace = await readPace(kv);
-  const maxPerDay = Math.max(1, Number(process.env.MAX_POSTS_PER_DAY ?? "8"));
+  const maxPerDay = Math.max(1, Number(process.env.MAX_POSTS_PER_DAY ?? "10"));
+  const maxUrgentPerDay = Math.max(
+    0,
+    Number(process.env.MAX_URGENT_PER_DAY ?? "5"),
+  );
   const minGapMin = Math.max(
     30,
     Number(process.env.MIN_MINUTES_BETWEEN_POSTS ?? "90"),
   );
+  const urgentGapMin = Math.max(
+    10,
+    Number(process.env.MIN_MINUTES_BETWEEN_URGENT ?? "20"),
+  );
 
-  if (pace.count >= maxPerDay) {
+  const atDailyCap = pace.count >= maxPerDay;
+  const gapMs = pace.lastPostedAt
+    ? Date.now() - Date.parse(pace.lastPostedAt)
+    : Number.POSITIVE_INFINITY;
+  const inNormalGap =
+    Number.isFinite(gapMs) && gapMs < minGapMin * 60_000;
+  const inUrgentGap =
+    Number.isFinite(gapMs) && gapMs < urgentGapMin * 60_000;
+
+  // When the regular day is full / gap is open, we still look for urgent news.
+  if (atDailyCap && pace.urgentCount >= maxUrgentPerDay) {
     console.log(
       JSON.stringify({
         posted: false,
         reason: "daily_cap",
         day: pace.day,
         count: pace.count,
+        urgentCount: pace.urgentCount,
         maxPerDay,
+        maxUrgentPerDay,
       }),
     );
     return;
-  }
-  if (pace.lastPostedAt) {
-    const gapMs = Date.now() - Date.parse(pace.lastPostedAt);
-    const needMs = minGapMin * 60_000;
-    if (Number.isFinite(gapMs) && gapMs < needMs) {
-      console.log(
-        JSON.stringify({
-          posted: false,
-          reason: "min_gap",
-          waitMinutes: Math.ceil((needMs - gapMs) / 60_000),
-          minGapMin,
-        }),
-      );
-      return;
-    }
   }
 
   await maybeCrossPromo(kv, token, chatId);
@@ -282,19 +290,36 @@ async function main(): Promise<void> {
   // Default 1: research + reader feedback — avoid bursts.
   const maxPerCycle = Math.max(1, Number(process.env.MAX_POSTS_PER_CYCLE ?? "1"));
   const roomToday = Math.max(0, maxPerDay - pace.count);
+  const urgentRoom = Math.max(0, maxUrgentPerDay - pace.urgentCount);
   let posted = 0;
   let failed = 0;
   const usedKinds = new Set<string>();
 
-  for (const best of candidates) {
-    if (posted >= Math.min(maxPerCycle, roomToday)) break;
+  // Prefer urgent first when the regular day is full or the long gap is open.
+  const ordered = [...candidates].sort((a, b) => {
+    const au = a.mode === "important" ? 1 : 0;
+    const bu = b.mode === "important" ? 1 : 0;
+    if (au !== bu) return bu - au;
+    return 0;
+  });
+
+  for (const best of ordered) {
+    const urgent = best.mode === "important";
+    if (urgent) {
+      if (urgentRoom <= 0) continue;
+      if (inUrgentGap) continue;
+    } else {
+      if (atDailyCap || roomToday <= 0) continue;
+      if (inNormalGap) continue;
+    }
+    if (posted >= maxPerCycle) break;
 
     // Soft diversity: if we already posted politics, prefer another kind once.
     if (
       posted > 0 &&
       usedKinds.has("politics") &&
       best.item.kind === "politics" &&
-      candidates.some(
+      ordered.some(
         (c) =>
           c.item.kind !== "politics" &&
           !usedKinds.has(c.item.kind) &&
@@ -372,7 +397,7 @@ async function main(): Promise<void> {
     }
     posted += 1;
     usedKinds.add(best.item.kind);
-    await bumpPace(kv, pace);
+    await bumpPace(kv, pace, urgent);
 
     console.log(
       JSON.stringify({
@@ -382,22 +407,38 @@ async function main(): Promise<void> {
         source: best.item.source,
         kind: best.item.kind,
         mode: best.mode,
+        urgent,
         score: best.score,
         publishedAt: best.item.publishedAt,
         dayCount: pace.count,
+        urgentCount: pace.urgentCount,
         maxPerDay,
       }),
     );
   }
 
   if (posted === 0) {
+    let reason = "no_publishable_item";
+    if (candidates.length > 0) {
+      if (atDailyCap && !ordered.some((c) => c.mode === "important")) {
+        reason = "daily_cap";
+      } else if (inNormalGap && !ordered.some((c) => c.mode === "important")) {
+        reason = "min_gap";
+      } else if (failed > 0) {
+        reason = "all_candidates_failed";
+      } else {
+        reason = "pace_blocked";
+      }
+    }
     console.log(
       JSON.stringify({
         posted: false,
-        reason:
-          candidates.length === 0 ? "no_publishable_item" : "all_candidates_failed",
+        reason,
         failed,
         scanned: items.length,
+        dayCount: pace.count,
+        urgentCount: pace.urgentCount,
+        maxPerDay,
       }),
     );
   } else {
@@ -414,11 +455,12 @@ async function readPace(kv: ReturnType<typeof createFileKv>): Promise<PaceState>
   const day = new Date().toISOString().slice(0, 10);
   const prev = (await kv.get(PACE_KEY)) as PaceState | undefined;
   if (!prev || prev.day !== day) {
-    return { day, count: 0 };
+    return { day, count: 0, urgentCount: 0 };
   }
   return {
     day,
     count: Number(prev.count) || 0,
+    urgentCount: Number(prev.urgentCount) || 0,
     lastPostedAt: prev.lastPostedAt,
   };
 }
@@ -426,8 +468,13 @@ async function readPace(kv: ReturnType<typeof createFileKv>): Promise<PaceState>
 async function bumpPace(
   kv: ReturnType<typeof createFileKv>,
   pace: PaceState,
+  urgent: boolean,
 ): Promise<void> {
-  pace.count += 1;
+  if (urgent) {
+    pace.urgentCount += 1;
+  } else {
+    pace.count += 1;
+  }
   pace.lastPostedAt = new Date().toISOString();
   await kv.put(PACE_KEY, pace);
 }

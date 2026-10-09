@@ -16,8 +16,8 @@ Free Telegram news publisher for **P News** — US news in Russian via `@PolozNe
 - National-relevance filter (drops tiny local races)
 - RU polish for names/calques
 - Stronger dedupe (EN + RU titles)
-- Paced publishing: **~8 posts/day**, **≥90 min apart**, 1 post per cycle
-  (LiveDune/Skillbox: 4+ unmarked posts cut reach; news niche OK near 5–10 if spaced)
+- Paced publishing: **10 regular posts/day**, **≥90 min apart**
+  - Urgent/breaking (`important`) go **outside** that cap (up to 5/day, ≥20 min apart)
 - Morning digest (`digest:morning`, cron 11:00 UTC)
 - Pin + description (`ensure:channel`)
 - Cross-promo to `@pbrasilagora` every ~48h

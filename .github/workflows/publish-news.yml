@@ -1,12 +1,13 @@
 # Paced publisher for @PolozNewss (no Cursor model).
-# Target ~8 posts/day in active hours, ≥90 min apart (see MAX_* env).
+# Regular: up to 10/day, ≥90 min apart.
+# Urgent (important mode): outside the regular cap, shorter gap, checked often.
 # Repo secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
 name: publish-news
 
 on:
   schedule:
-    # 8 slots/day UTC ≈ 09:00–23:00 MSK — matches small news-channel cadence.
-    - cron: "0 6,8,10,12,14,16,18,20 * * *"
+    # Every 30 min so urgent news is not stuck waiting for the next 2h slot.
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 concurrency:
@@ -50,6 +51,8 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           MAX_POSTS_PER_CYCLE: "1"
-          MAX_POSTS_PER_DAY: "8"
+          MAX_POSTS_PER_DAY: "10"
+          MAX_URGENT_PER_DAY: "5"
           MIN_MINUTES_BETWEEN_POSTS: "90"
+          MIN_MINUTES_BETWEEN_URGENT: "20"
         run: npm run publish:once

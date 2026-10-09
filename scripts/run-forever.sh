@@ -5,8 +5,8 @@ cd "$(dirname "$0")/.."
 
 mkdir -p data logs
 LOG="logs/publish.log"
-# Default 2h — keep local forever-loop aligned with paced Actions schedule.
-INTERVAL_SEC="${PUBLISH_INTERVAL_SEC:-7200}"
+# Default 30 min — picks up urgent news; regular posts still paced in code.
+INTERVAL_SEC="${PUBLISH_INTERVAL_SEC:-1800}"
 
 if [[ -f .env.local ]]; then set -a
   # shellcheck disable=SC1091
