@@ -38,17 +38,15 @@ const NAME_MAP: Array<[RegExp, string]> = [
 ];
 
 const PHRASE_FIXES: Array<[RegExp, string]> = [
-  // ICE mistranslated as weather ice / «ледяной».
-  [/ледяной\s+агент(?:ы|ов|а|ом|ами)?/gi, "ICE агент"],
-  [/ледяные\s+агент(?:ы|ов)?/gi, "ICE агенты"],
+  // ICE mistranslated as weather ice / «ледяной» (Cyrillic-safe, no \b/\w).
+  [/ледян(?:ой|ые|ого|ым|ыми)\s+агент(?:ы|ов|а|ом|ами)?/gi, "ICE агент"],
   [/агент(?:ы|ов|ами|а|у|ом)?\s+(?:льда|льду|льдом)/gi, "ICE агент"],
   [/сотрудник(?:и|ов|ами|а|у)?\s+(?:льда|льду|льдом)/gi, "сотрудник ICE"],
-  [/застреленн\w*\s+льдом/gi, "застреленный ICE"],
+  [/застреленн[а-яё]*\s+льдом/gi, "застреленный ICE"],
   [/стреля(?:ет|л|ли)\s+льдом/gi, "стреляет ICE"],
-  [/\bльдом\b(?=\s+(?:в\s+Нью|в\s+Чикаго|в\s+Лос|агент|сотрудник|,|\.|$))/gi, "ICE"],
-  [/\bЛЬДОМ\b/g, "ICE"],
-  [/\bЛЕДЯНОЙ\b/g, "ICE"],
-  [/\bльда\b(?=\s+(?:в\s+Нью|агент|,|\.|$))/gi, "ICE"],
+  [/(?<![а-яёА-ЯЁ])льдом(?![а-яёА-ЯЁ])/gi, "ICE"],
+  [/(?<![а-яёА-ЯЁ])льда(?![а-яёА-ЯЁ])(?=\s+(?:в\s+Нью|агент|,|\.|$))/gi, "ICE"],
+  [/(?<![а-яёА-ЯЁ])ледяной(?![а-яёА-ЯЁ])/gi, "ICE"],
   [/XXICEAGENT(?:S|XX)?/gi, "ICE агент"],
   [/XXICEOFFICER(?:S|XX)?/gi, "ICE офицер"],
   [/XXICEAGENCYXX/gi, "ICE"],
@@ -140,7 +138,9 @@ export function looksBrokenRussian(text: string): boolean {
     return true;
   }
   if (/смотреть\s*:\s*что\s+мы\s+знаем/i.test(text)) return true;
-  if (/ледяной\s+агент|застреленн\w*\s+льдом|\bЛЬДОМ\b/i.test(text)) return true;
+  if (/ледян(?:ой|ые)\s+агент|застреленн[а-яё]*\s+льдом|(?<![а-яёА-ЯЁ])льдом(?![а-яёА-ЯЁ])/i.test(text)) {
+    return true;
+  }
   // Too much leftover English in a "Russian" post.
   const cyr = (text.match(/[А-Яа-яЁё]/g) ?? []).length;
   const lat = (text.match(/[A-Za-z]/g) ?? []).length;
