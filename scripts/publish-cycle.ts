@@ -18,7 +18,6 @@ import {
 import {
   BODY_MAX_LEN,
   BODY_MAX_SENTENCES,
-  buildBrasilCrossPromo,
   buildNewsCaption,
   dropTornFragments,
   looksTornText,
@@ -47,7 +46,6 @@ import {
 } from "../lib/rss.js";
 import {
   seedMessageReaction,
-  sendTelegramMessage,
   sendTelegramPhoto,
 } from "../lib/telegram.js";
 
@@ -75,8 +73,6 @@ function loadEnvFile(path: string): void {
 loadEnvFile(resolve(".env.local"));
 loadEnvFile(resolve(".env"));
 
-const CROSS_PROMO_KEY = "meta:brasil-cross-promo";
-const CROSS_PROMO_EVERY_MS = 1000 * 60 * 60 * 48;
 /** Pace ledger: caps daily volume so the channel does not flood. */
 const PACE_KEY = "meta:publish-pace";
 
@@ -136,8 +132,6 @@ async function main(): Promise<void> {
     );
     return;
   }
-
-  await maybeCrossPromo(kv, token, chatId);
 
   const items = await fetchCandidates();
 
@@ -477,31 +471,6 @@ async function bumpPace(
   }
   pace.lastPostedAt = new Date().toISOString();
   await kv.put(PACE_KEY, pace);
-}
-
-async function maybeCrossPromo(
-  kv: ReturnType<typeof createFileKv>,
-  token: string,
-  chatId: string,
-): Promise<void> {
-  const prev = (await kv.get(CROSS_PROMO_KEY)) as
-    | { at?: string }
-    | undefined;
-  const last = prev?.at ? Date.parse(prev.at) : 0;
-  if (Number.isFinite(last) && Date.now() - last < CROSS_PROMO_EVERY_MS) {
-    return;
-  }
-  const result = await sendTelegramMessage({
-    token,
-    chatId,
-    text: buildBrasilCrossPromo(),
-  });
-  if (!result.ok) {
-    console.error("cross_promo_failed", result.error);
-    return;
-  }
-  await kv.put(CROSS_PROMO_KEY, { at: new Date().toISOString(), messageId: result.messageId });
-  console.log(JSON.stringify({ cross_promo: true, messageId: result.messageId }));
 }
 
 async function fetchCandidates(): Promise<NewsItem[]> {

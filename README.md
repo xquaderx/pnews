@@ -20,7 +20,6 @@ Free Telegram news publisher for **P News** — US news in Russian via `@PolozNe
   - Urgent/breaking (`important`) go **outside** that cap (up to 5/day, ≥20 min apart)
 - Morning digest (`digest:morning`, cron 11:00 UTC)
 - Pin + description (`ensure:channel`)
-- Cross-promo to `@pbrasilagora` every ~48h
 - Discussion group should stay linked in channel settings
 
 ```bash

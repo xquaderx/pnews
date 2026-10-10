@@ -6,7 +6,6 @@ import { cleanHeadline, type PostMode } from "./select.js";
 export const CHANNEL_PUBLIC_URL = "https://t.me/PolozNewss";
 export const CHANNEL_HANDLE = "@PolozNewss";
 export const CHANNEL_CTA_LABEL = "P News. Подписаться";
-export const BRASIL_CHANNEL_URL = "https://t.me/pbrasilagora";
 
 /** Soft target for body; final fit always keeps CTA inside 1024. */
 export const BODY_MAX_LEN = 720;
@@ -236,18 +235,6 @@ export function buildDigestCaption(bullets: string[]): string {
   return caption.slice(0, 1024);
 }
 
-export function buildBrasilCrossPromo(): string {
-  return [
-    "🇧🇷 <b>Читаете США — загляните и в Бразилию</b>",
-    "",
-    "Сестринский канал <b>P Brasil Agora</b> — новости Бразилии на португальском, тот же короткий формат.",
-    "",
-    `👉 <a href="${BRASIL_CHANNEL_URL}">P Brasil Agora. Inscrever-se</a>`,
-    "",
-    footerBlock(),
-  ].join("\n");
-}
-
 export function buildPinText(): string {
   return [
     "🇺🇸 <b>P News — новости из США</b>",
@@ -260,7 +247,6 @@ export function buildPinText(): string {
     "комментарии под постом",
     "",
     `Канал: <a href="${CHANNEL_PUBLIC_URL}">${escapeHtml(CHANNEL_HANDLE)}</a>`,
-    `Бразилия: <a href="${BRASIL_CHANNEL_URL}">@pbrasilagora</a>`,
   ].join("\n");
 }
 
